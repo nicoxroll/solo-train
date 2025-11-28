@@ -1,0 +1,396 @@
+
+import React, { ReactNode, useState } from 'react';
+import { Search, X, Check, AlertTriangle, Ban } from 'lucide-react';
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'glass';
+  children: ReactNode;
+}
+
+export const Button: React.FC<ButtonProps> = ({ variant = 'primary', className = '', children, ...props }) => {
+  const baseStyles = "relative font-mono uppercase text-xs tracking-[0.15em] py-3 px-6 transition-all duration-300 border backdrop-blur-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center";
+  
+  const variants = {
+    primary: "bg-primary/10 border-primary text-primary hover:bg-primary hover:text-black shadow-[0_0_15px_rgba(0,255,255,0.2)]",
+    secondary: "bg-transparent border-white/20 text-white hover:border-white hover:bg-white/5",
+    danger: "bg-red-500/10 border-red-500 text-red-500 hover:bg-red-500 hover:text-white",
+    ghost: "border-transparent text-gray-400 hover:text-white",
+    glass: "bg-white/5 border-white/10 text-white hover:bg-white/10 backdrop-blur-md"
+  };
+
+  return (
+    <button className={`${baseStyles} ${variants[variant]} ${className}`} {...props}>
+      {children}
+      {/* Decorative corner markers for tactical look */}
+      {variant === 'primary' && (
+        <>
+          <span className="absolute top-0 left-0 w-1 h-1 bg-primary"></span>
+          <span className="absolute bottom-0 right-0 w-1 h-1 bg-primary"></span>
+        </>
+      )}
+    </button>
+  );
+};
+
+export const Card: React.FC<{ children: ReactNode; className?: string; onClick?: () => void }> = ({ children, className = '', onClick }) => (
+  <div onClick={onClick} className={`glass-panel p-6 border-l-2 border-l-transparent hover:border-l-primary transition-colors duration-300 ${className}`}>
+    {children}
+  </div>
+);
+
+export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
+  <input
+    {...props}
+    className={`w-full bg-surfaceHighlight border-b border-white/20 px-4 py-3 text-sm font-light text-white focus:outline-none focus:border-primary focus:bg-white/5 transition-all placeholder-gray-600 ${props.className}`}
+  />
+);
+
+export const Select: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = (props) => (
+  <div className="relative">
+    <select
+      {...props}
+      className={`w-full appearance-none bg-surfaceHighlight border-b border-white/20 px-4 py-3 text-sm font-light text-white focus:outline-none focus:border-primary focus:bg-white/5 transition-all placeholder-gray-600 ${props.className}`}
+    >
+      {props.children}
+    </select>
+    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+    </div>
+  </div>
+);
+
+export const Badge: React.FC<{ children: ReactNode; variant?: 'default' | 'primary' | 'outline' }> = ({ children, variant = 'default' }) => {
+  const styles = {
+    default: 'border-white/10 text-gray-300 bg-white/5',
+    primary: 'border-primary/50 text-primary bg-primary/10',
+    outline: 'border-white/20 text-gray-400 bg-transparent'
+  };
+  
+  return (
+    <span className={`inline-block px-2 py-0.5 border text-[10px] uppercase tracking-wider ${styles[variant]}`}>
+      {children}
+    </span>
+  );
+};
+
+export const StatusBadge: React.FC<{ status: 'COMPLETED' | 'INCOMPLETE' | 'ABORTED' }> = ({ status }) => {
+  const styles = {
+    COMPLETED: { color: 'text-primary', border: 'border-primary', icon: Check, bg: 'bg-primary/10' },
+    INCOMPLETE: { color: 'text-yellow-500', border: 'border-yellow-500', icon: AlertTriangle, bg: 'bg-yellow-500/10' },
+    ABORTED: { color: 'text-red-500', border: 'border-red-500', icon: Ban, bg: 'bg-red-500/10' }
+  };
+
+  const config = styles[status];
+  const Icon = config.icon;
+
+  return (
+    <div className={`flex items-center gap-2 px-2 py-1 rounded border ${config.border} ${config.bg} ${config.color}`}>
+      <Icon className="w-3 h-3" />
+      <span className="text-[9px] uppercase font-bold tracking-wider">{status}</span>
+    </div>
+  );
+};
+
+export const ProgressBar: React.FC<{ progress: number; className?: string }> = ({ progress, className = '' }) => (
+  <div className={`w-full h-1 bg-gray-800 relative overflow-hidden ${className}`}>
+    <div 
+      className="h-full bg-primary shadow-[0_0_10px_#00ffff] transition-all duration-500 ease-out" 
+      style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+    />
+  </div>
+);
+
+// Simple SVG Line Chart
+export const SimpleChart: React.FC<{ data: number[]; labels: string[]; color?: string }> = ({ data, labels, color = '#00ffff' }) => {
+  const height = 100;
+  const width = 300;
+  const max = Math.max(...data, 1) * 1.1; // Add padding
+  const min = Math.min(...data) * 0.9;
+  
+  const points = data.map((val, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((val - min) / (max - min)) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <div className="w-full overflow-hidden relative">
+      <svg viewBox={`0 0 ${width} ${height + 20}`} className="w-full h-auto overflow-visible">
+        {/* Grid lines */}
+        <line x1="0" y1="0" x2={width} y2="0" stroke="#333" strokeDasharray="4" strokeOpacity="0.5" />
+        <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="#333" strokeDasharray="4" strokeOpacity="0.5" />
+        <line x1="0" y1={height} x2={width} y2={height} stroke="#333" strokeDasharray="4" strokeOpacity="0.5" />
+        
+        {/* Fill Area Gradient */}
+        <defs>
+          <linearGradient id={`grad-${color}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon points={`0,${height} ${points} ${width},${height}`} fill={`url(#grad-${color})`} />
+
+        {/* The Line */}
+        <polyline
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          points={points}
+          className="drop-shadow-[0_0_4px_rgba(0,255,255,0.5)]"
+        />
+        
+        {/* Points */}
+        {data.map((val, i) => {
+           const x = (i / (data.length - 1)) * width;
+           const y = height - ((val - min) / (max - min)) * height;
+           return (
+             <circle key={i} cx={x} cy={y} r="3" fill="#000" stroke={color} strokeWidth="2" />
+           );
+        })}
+
+        {/* Labels */}
+        {labels.map((lbl, i) => {
+           const x = (i / (labels.length - 1)) * width;
+           return (
+             <text key={i} x={x} y={height + 15} fontSize="8" fill="#666" textAnchor="middle" fontFamily="monospace">{lbl}</text>
+           )
+        })}
+      </svg>
+    </div>
+  );
+};
+
+// Radar Chart for "PES" Style stats
+export const RadarChart: React.FC<{ 
+  data: { label: string; value: number; fullMark: number }[]; 
+  size?: number; 
+  color?: string; 
+}> = ({ data, size = 200, color = '#00ffff' }) => {
+  const center = size / 2;
+  const radius = (size / 2) - 30; // Padding
+  const angleSlice = (Math.PI * 2) / data.length;
+
+  // Helper to calculate coordinates
+  const getCoordinates = (value: number, index: number, max: number) => {
+    const angle = index * angleSlice - Math.PI / 2;
+    const r = (value / max) * radius;
+    return {
+      x: center + Math.cos(angle) * r,
+      y: center + Math.sin(angle) * r
+    };
+  };
+
+  const polyPoints = data.map((d, i) => {
+    const coords = getCoordinates(d.value, i, d.fullMark);
+    return `${coords.x},${coords.y}`;
+  }).join(' ');
+
+  const gridLevels = [0.25, 0.5, 0.75, 1];
+
+  return (
+    <div className="flex justify-center items-center py-4">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {/* Background Grid */}
+        {gridLevels.map((level, i) => {
+          const points = data.map((d, j) => {
+            const coords = getCoordinates(d.fullMark * level, j, d.fullMark);
+            return `${coords.x},${coords.y}`;
+          }).join(' ');
+          return (
+            <polygon 
+              key={i} 
+              points={points} 
+              fill="none" 
+              stroke="#333" 
+              strokeWidth="1" 
+              strokeDasharray={level === 1 ? "0" : "4"}
+            />
+          );
+        })}
+
+        {/* Axis Lines */}
+        {data.map((d, i) => {
+          const coords = getCoordinates(d.fullMark, i, d.fullMark);
+          return (
+            <line 
+              key={i} 
+              x1={center} 
+              y1={center} 
+              x2={coords.x} 
+              y2={coords.y} 
+              stroke="#333" 
+              strokeWidth="1" 
+            />
+          );
+        })}
+
+        {/* Data Area */}
+        <polygon 
+          points={polyPoints} 
+          fill={color} 
+          fillOpacity="0.2" 
+          stroke={color} 
+          strokeWidth="2" 
+          className="drop-shadow-[0_0_8px_rgba(0,255,255,0.4)]"
+        />
+
+        {/* Labels */}
+        {data.map((d, i) => {
+          const angle = i * angleSlice - Math.PI / 2;
+          const labelRadius = radius + 20;
+          const x = center + Math.cos(angle) * labelRadius;
+          const y = center + Math.sin(angle) * labelRadius;
+          return (
+            <text 
+              key={i} 
+              x={x} 
+              y={y} 
+              textAnchor="middle" 
+              dominantBaseline="middle" 
+              fill="#888" 
+              fontSize="10" 
+              fontFamily="monospace"
+              className="uppercase"
+            >
+              {d.label}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
+
+export const CalendarGrid: React.FC<{ days: { day: string; active: boolean }[] }> = ({ days }) => (
+  <div className="grid grid-cols-7 gap-2">
+    {days.map((d, i) => (
+      <div key={i} className="flex flex-col items-center gap-1">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs border ${d.active ? 'bg-primary text-black border-primary font-bold shadow-[0_0_10px_rgba(0,255,255,0.4)]' : 'border-white/10 text-gray-500'}`}>
+          {d.day}
+        </div>
+        {d.active && <div className="w-1 h-1 bg-primary rounded-full"></div>}
+      </div>
+    ))}
+  </div>
+);
+
+export const FilterGroup: React.FC<{ 
+  options: string[]; 
+  selected: string[]; 
+  onChange: (selected: string[]) => void 
+}> = ({ options, selected, onChange }) => {
+  const toggle = (opt: string) => {
+    if (selected.includes(opt)) {
+      onChange(selected.filter(s => s !== opt));
+    } else {
+      onChange([...selected, opt]);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => {
+        const isActive = selected.includes(opt);
+        return (
+          <button
+            key={opt}
+            onClick={() => toggle(opt)}
+            className={`
+              relative px-4 py-1.5 text-[10px] uppercase tracking-wider font-mono border transition-all duration-300
+              ${isActive 
+                ? 'bg-primary/20 border-primary text-primary shadow-[0_0_8px_rgba(0,255,255,0.2)]' 
+                : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/30 hover:text-gray-300'
+              }
+              clip-path-angled
+            `}
+            style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
+          >
+            {opt}
+          </button>
+        )
+      })}
+    </div>
+  );
+};
+
+export const FilterModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  sections: { title: string; options: string[] }[];
+  selectedFilters: string[];
+  onToggleFilter: (filter: string) => void;
+}> = ({ isOpen, onClose, sections, selectedFilters, onToggleFilter }) => {
+  const [filterSearch, setFilterSearch] = useState('');
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-xl animate-fade-in">
+       {/* Header */}
+       <div className="flex items-center justify-between p-6 border-b border-white/10">
+         <div>
+           <h2 className="text-xl font-light text-white tracking-widest">FILTER // CONFIG</h2>
+           <p className="text-[10px] text-primary uppercase">Select Parameters</p>
+         </div>
+         <button onClick={onClose} className="p-2 border border-white/10 hover:border-white/50 text-white rounded-full transition-colors">
+            <X className="w-5 h-5" />
+         </button>
+       </div>
+
+       {/* Search in filters */}
+       <div className="p-6 pb-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-3.5 w-4 h-4 text-gray-500" />
+            <Input 
+              placeholder="Search parameters..." 
+              className="pl-10 !bg-white/5 border-transparent focus:border-primary"
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+            />
+          </div>
+       </div>
+
+       {/* Content */}
+       <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+          {sections.map((section) => {
+             const filteredOptions = section.options.filter(opt => opt.toLowerCase().includes(filterSearch.toLowerCase()));
+             if (filteredOptions.length === 0) return null;
+
+             return (
+               <div key={section.title}>
+                 <h3 className="text-xs text-gray-500 uppercase tracking-widest mb-4 border-l-2 border-primary pl-2">{section.title}</h3>
+                 <div className="flex flex-wrap gap-2">
+                   {filteredOptions.map(opt => {
+                     const isActive = selectedFilters.includes(opt);
+                     return (
+                       <button
+                          key={opt}
+                          onClick={() => onToggleFilter(opt)}
+                          className={`
+                            px-4 py-2 text-xs uppercase tracking-wide font-mono border transition-all duration-300
+                            ${isActive 
+                              ? 'bg-primary text-black border-primary shadow-[0_0_15px_rgba(0,255,255,0.4)]' 
+                              : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30 hover:text-white'
+                            }
+                          `}
+                          style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}
+                       >
+                         {opt}
+                       </button>
+                     )
+                   })}
+                 </div>
+               </div>
+             )
+          })}
+       </div>
+
+       {/* Footer */}
+       <div className="p-6 border-t border-white/10 bg-black/40">
+         <Button onClick={onClose} className="w-full">
+            Apply Filters ({selectedFilters.length})
+         </Button>
+       </div>
+    </div>
+  );
+};
