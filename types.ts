@@ -7,12 +7,17 @@ export interface SetLog {
 }
 
 export interface Exercise {
+  id: string;
   name: string;
-  type: string;
-  muscle: string;
+  bodyPart: string; // Replaces 'muscle' in API, but we map to this
+  muscle: string; // Kept for compatibility, mapped from bodyPart
   equipment: string;
-  difficulty: string;
-  instructions: string;
+  target: string;
+  secondaryMuscles: string[];
+  gifUrl: string;
+  instructions: string[]; // Array of strings in new API
+  type?: string; // Inferred or defaulted
+  difficulty?: string; // Inferred or defaulted
 }
 
 export interface RoutineExercise extends Exercise {
