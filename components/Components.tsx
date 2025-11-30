@@ -1,6 +1,7 @@
 
 import React, { ReactNode, useState } from 'react';
-import { Search, X, Check, AlertTriangle, Ban } from 'lucide-react';
+import { Search, X, Check, AlertTriangle, Ban, ChevronLeft, Calendar, Clock, BarChart3, Layers } from 'lucide-react';
+import { WorkoutLog, RoutineExercise } from '../types';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'glass';
@@ -98,6 +99,30 @@ export const ProgressBar: React.FC<{ progress: number; className?: string }> = (
       style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
     />
   </div>
+);
+
+// Standardized Header Component
+export const ScreenHeader: React.FC<{ 
+  title: string; 
+  subtitle?: string; 
+  rightAction?: ReactNode;
+  onBack?: () => void;
+  className?: string;
+}> = ({ title, subtitle, rightAction, onBack, className = '' }) => (
+  <header className={`flex items-end justify-between border-b border-white/10 pb-4 mb-6 ${className}`}>
+    <div className="flex items-center gap-4">
+      {onBack && (
+        <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors p-1 -ml-1">
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+      )}
+      <div>
+        <h2 className="text-3xl font-light text-white uppercase tracking-tight leading-none">{title}</h2>
+        {subtitle && <p className="text-[10px] text-primary uppercase tracking-[0.2em] font-mono mt-1">{subtitle}</p>}
+      </div>
+    </div>
+    {rightAction && <div className="mb-1">{rightAction}</div>}
+  </header>
 );
 
 // Simple SVG Line Chart
@@ -353,7 +378,8 @@ export const FilterModal: React.FC<{
        {/* Content */}
        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
           {sections.map((section) => {
-             const filteredOptions = section.options.filter(opt => opt.toLowerCase().includes(filterSearch.toLowerCase()));
+             // Safe check for string to avoid toLowerCase crash
+             const filteredOptions = section.options.filter(opt => String(opt).toLowerCase().includes(filterSearch.toLowerCase()));
              if (filteredOptions.length === 0) return null;
 
              return (
@@ -393,4 +419,74 @@ export const FilterModal: React.FC<{
        </div>
     </div>
   );
+};
+
+// Modal for viewing detailed log of a completed mission
+export const LogDetailModal: React.FC<{ log: WorkoutLog | null; onClose: () => void }> = ({ log, onClose }) => {
+   if (!log) return null;
+
+   return (
+     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" onClick={onClose}>
+       <div className="w-full max-w-lg bg-surface border border-white/10 relative overflow-hidden flex flex-col max-h-[80vh] shadow-[0_0_50px_rgba(0,0,0,0.8)]" onClick={e => e.stopPropagation()}>
+         
+         <div className="bg-white/5 border-b border-white/10 p-6 flex justify-between items-start">
+            <div>
+               <h2 className="text-xl font-mono text-white uppercase tracking-wide mb-1">{log.routineName}</h2>
+               <div className="flex items-center gap-2 text-[10px] text-gray-400 font-mono uppercase">
+                  <Calendar className="w-3 h-3" />
+                  <span>{new Date(log.date).toLocaleDateString()}</span>
+                  <Clock className="w-3 h-3 ml-2" />
+                  <span>{log.duration} MIN</span>
+               </div>
+            </div>
+            <button onClick={onClose} className="p-2 bg-black/50 hover:text-primary rounded-full transition-colors"><X className="w-4 h-4" /></button>
+         </div>
+
+         <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+            <div className="grid grid-cols-3 gap-4">
+                <div className="glass-panel p-3 border border-white/10 text-center">
+                   <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">XP</div>
+                   <div className="text-xl text-primary font-mono font-bold">+{log.xpEarned}</div>
+                </div>
+                <div className="glass-panel p-3 border border-white/10 text-center">
+                   <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Volume</div>
+                   <div className="text-xl text-white font-mono font-bold">{(log.totalVolume/1000).toFixed(1)}k</div>
+                </div>
+                <div className="glass-panel p-3 border border-white/10 text-center">
+                   <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Status</div>
+                   <div className="flex justify-center"><StatusBadge status={log.status} /></div>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+               <h3 className="text-xs text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Mission Log</h3>
+               {log.exercises.map((ex, i) => {
+                  const completedCount = ex.setLogs.filter(s => s.completed).length;
+                  return (
+                     <div key={i} className="bg-white/5 border border-white/5 p-3 space-y-2">
+                        <div className="flex justify-between items-center">
+                           <span className="text-sm font-mono text-white uppercase font-bold">{ex.name}</span>
+                           <span className="text-[10px] font-mono text-gray-400">{completedCount}/{ex.targetSets} SETS</span>
+                        </div>
+                        <div className="space-y-1">
+                           {ex.setLogs.map((set, j) => (
+                              <div key={j} className="flex justify-between items-center text-xs font-mono px-2 py-1 bg-black/20 rounded-sm">
+                                 <span className="text-gray-500">SET {j+1}</span>
+                                 <span className="text-gray-300">{set.weight}kg x {set.reps}</span>
+                                 {set.completed ? <Check className="w-3 h-3 text-primary" /> : <span className="w-3 h-3 block bg-gray-700/50 rounded-full"></span>}
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+                  )
+               })}
+            </div>
+         </div>
+
+         <div className="p-4 bg-surfaceHighlight border-t border-white/10">
+            <Button onClick={onClose} className="w-full">Close Log</Button>
+         </div>
+       </div>
+     </div>
+   );
 };

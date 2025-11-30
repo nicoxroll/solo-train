@@ -15,6 +15,7 @@ export interface Exercise {
   target: string;
   secondaryMuscles: string[];
   gifUrl: string;
+  imageUrl?: string; // New field for static PNGs
   instructions: string[]; // Array of strings in new API
   type?: string; // Inferred or defaulted
   difficulty?: string; // Inferred or defaulted
@@ -77,6 +78,9 @@ export interface UserProfile {
   currentXp: number;
   xpRequired: number;
   stats: UserStats[];
+  onboardingComplete: boolean;
+  experience?: 'BEGINNER' | 'INTERMEDIATE' | 'EXPERT';
+  goal?: 'STRENGTH' | 'HYPERTROPHY' | 'ENDURANCE';
 }
 
-export type ViewState = 'LOGIN' | 'DASHBOARD' | 'ROUTINE_DETAIL' | 'EXPLORE' | 'WORKOUT' | 'PROFILE' | 'LOGS';
+export type ViewState = 'LOGIN' | 'SETUP' | 'DASHBOARD' | 'ROUTINE_DETAIL' | 'EXPLORE' | 'WORKOUT' | 'PROFILE' | 'LOGS';

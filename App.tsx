@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { fetchExercises, getExerciseImage } from './services/api';
+import { fetchExercises, fetchBodyParts, fetchEquipments, fetchTargetMuscles, fetchExerciseTypes, getExerciseThumbnail, getExerciseGif, getEquipmentImageUrl, getTargetImageUrl } from './services/api';
 import { Exercise, Routine, RoutineExercise, UserProfile, ViewState, WorkoutSession, WorkoutLog, LogStatus, UserStats } from './types';
-import { Button, Card, Input, Badge, ProgressBar, SimpleChart, Select, RadarChart, FilterGroup, FilterModal, StatusBadge, CalendarGrid } from './components/Components';
+import { Button, Card, Input, Badge, ProgressBar, SimpleChart, Select, RadarChart, FilterGroup, FilterModal, StatusBadge, CalendarGrid, ScreenHeader, LogDetailModal } from './components/Components';
 import { 
   User, Dumbbell, Play, Search, Plus, Check, 
-  Trash2, ChevronLeft, Settings, Activity, Save, 
+  Trash2, ChevronLeft, ChevronRight, Settings, Activity, Save, 
   X, ChevronDown, ChevronUp, Image as ImageIcon,
-  Database, Layers, BrainCircuit, AlertTriangle, FileText, Calendar, Copy, SlidersHorizontal, Info, RefreshCw, Ban, BarChart3, List, Target, Zap
+  Database, Layers, BrainCircuit, AlertTriangle, FileText, Calendar, Copy, SlidersHorizontal, Info, RefreshCw, Ban, BarChart3, List, Target, Zap, ArrowLeft, ArrowRight, Eye, EyeOff, Radio, Cpu, FileBadge, Crosshair, MonitorPlay
 } from 'lucide-react';
 
 // --- Helper Data & Functions ---
@@ -15,11 +15,9 @@ import {
 const calculateXP = (exercises: RoutineExercise[]): number => {
   let xp = 0;
   exercises.forEach(ex => {
-    // Base XP per set based on difficulty (defaulting to intermediate if unknown)
     const diff = ex.difficulty || 'intermediate';
     const multiplier = diff === 'expert' ? 3 : diff === 'intermediate' ? 2 : 1;
     const completedSets = ex.setLogs.filter(s => s.completed).length;
-    // 10 XP base per set
     xp += completedSets * 10 * multiplier;
   });
   return xp;
@@ -40,74 +38,197 @@ const formatDuration = (ms: number) => {
   return `${minutes} min`;
 };
 
-const PREMADE_ROUTINES: Routine[] = [
-  {
-    id: 'p1',
-    name: 'Tactical Strength Alpha',
-    description: 'Foundation strength protocol focusing on compound movements for maximum operative output.',
-    isFavorite: false,
-    exercises: [
-      { 
-        id: 'p1_e1', name: 'Barbell Squat', bodyPart: 'upper legs', muscle: 'upper legs', type: 'strength', difficulty: 'expert', equipment: 'barbell', target: 'quads', secondaryMuscles: ['glutes'], gifUrl: 'https://images.unsplash.com/photo-1574680096141-1cddd32e2552?q=80&w=800&auto=format&fit=crop', instructions: ['Squat deep.'], targetSets: 5, targetReps: '5', targetWeight: '100', setLogs: [] 
-      },
-      { 
-        id: 'p1_e2', name: 'Bench Press', bodyPart: 'chest', muscle: 'chest', type: 'strength', difficulty: 'intermediate', equipment: 'barbell', target: 'pecs', secondaryMuscles: ['triceps'], gifUrl: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=800&auto=format&fit=crop', instructions: ['Press.'], targetSets: 5, targetReps: '5', targetWeight: '80', setLogs: [] 
-      },
-    ]
-  },
-  {
-    id: 'p2',
-    name: 'Operative Mobility B',
-    description: 'High volume mobility and core sequence for field endurance.',
-    isFavorite: false,
-    exercises: [
-       { 
-        id: 'p2_e1', name: '45° side bend', bodyPart: 'waist', muscle: 'waist', type: 'strength', difficulty: 'beginner', equipment: 'body weight', target: 'abs', secondaryMuscles: ['obliques'], gifUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?q=80&w=800&auto=format&fit=crop', instructions: ['Bend.'], targetSets: 3, targetReps: '15', targetWeight: '0', setLogs: [] 
-      },
-      { 
-        id: 'p2_e2', name: 'Barbell Deadlift', bodyPart: 'back', muscle: 'back', type: 'strength', difficulty: 'expert', equipment: 'barbell', target: 'spine', secondaryMuscles: ['glutes'], gifUrl: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=800&auto=format&fit=crop', instructions: ['Lift.'], targetSets: 3, targetReps: '8', targetWeight: '120', setLogs: [] 
-      }
-    ]
-  }
-];
+// Simplified base routines for fallback/initialization
+const PREMADE_ROUTINES: Routine[] = []; 
 
-const DUMMY_LOGS: WorkoutLog[] = [
-  {
-    id: 'log_dummy_1',
-    routineName: 'Tactical Strength Alpha',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(), // Yesterday
-    duration: 55,
-    xpEarned: 450,
-    exercisesCompleted: 3,
-    totalVolume: 5200,
-    status: 'COMPLETED',
-    exercises: PREMADE_ROUTINES[0].exercises
-  }
-];
+const DUMMY_LOGS: WorkoutLog[] = [];
 
 // --- Sub-Components ---
 
 // 1. LOGIN VIEW
 const LoginView: React.FC<{ onLogin: () => void }> = ({ onLogin }) => (
-  <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
+  <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden bg-black">
     <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,black_40%,transparent_100%)] pointer-events-none"></div>
-
-    <div className="z-10 w-full max-w-md space-y-12 text-center">
-      <div className="space-y-2">
-        <h1 className="text-6xl font-thin tracking-tighter text-white">SOLO<span className="text-primary font-normal">TRAIN</span></h1>
-        <p className="text-gray-500 text-xs tracking-[0.3em] uppercase">Tactical Performance Tracker</p>
+    
+    {/* Glitch effect container */}
+    <div className="z-10 w-full max-w-md space-y-16 text-center">
+      <div className="space-y-4 relative">
+        <h1 className="text-7xl md:text-8xl font-mono font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-600 drop-shadow-[0_0_25px_rgba(0,255,255,0.3)] select-none">
+          SOLO<span className="text-primary drop-shadow-[0_0_10px_#00ffff]">TRAIN</span>
+        </h1>
+        <div className="h-px w-24 bg-primary mx-auto shadow-[0_0_10px_#00ffff]"></div>
+        <p className="text-primary/60 font-mono text-xs tracking-[0.5em] uppercase animate-pulse">Tactical Performance Interface</p>
       </div>
 
-      <div className="glass-panel p-8 space-y-6 relative border-t border-white/10">
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-black px-4 text-xs text-gray-500 uppercase tracking-widest">Identify</div>
-        <p className="font-light text-gray-400 text-sm">Please authenticate to access mission protocols.</p>
-        <Button onClick={onLogin} className="w-full flex items-center justify-center gap-3 group">
-           Initialize Google Link
+      <div className="glass-panel p-10 space-y-8 relative border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+        {/* Corner Accents */}
+        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-primary"></div>
+        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-primary"></div>
+        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-primary"></div>
+        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-primary"></div>
+
+        <div className="space-y-2">
+            <h2 className="text-white font-mono uppercase text-sm tracking-widest">Authentication Required</h2>
+            <p className="font-light text-gray-500 text-xs">Establish neural link to access mission parameters.</p>
+        </div>
+        
+        <Button onClick={onLogin} className="w-full flex items-center justify-center gap-3 group !text-sm !py-4">
+           Initialize System
+           <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
         </Button>
       </div>
     </div>
+    
+    <div className="absolute bottom-6 text-[10px] text-gray-700 font-mono uppercase tracking-widest">
+        System V.2.0.4 // Connection Secure
+    </div>
   </div>
 );
+
+// 1.5 ONBOARDING VIEW (SETUP)
+interface SetupData {
+  codename: string;
+  experience: 'BEGINNER' | 'INTERMEDIATE' | 'EXPERT';
+  goal: 'STRENGTH' | 'HYPERTROPHY' | 'ENDURANCE';
+}
+
+const OnboardingView: React.FC<{ onComplete: (data: SetupData) => void }> = ({ onComplete }) => {
+  const [step, setStep] = useState(1);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [data, setData] = useState<SetupData>({
+    codename: 'Agent',
+    experience: 'INTERMEDIATE',
+    goal: 'STRENGTH'
+  });
+
+  const handleNext = () => {
+    if (step < 3) setStep(step + 1);
+    else handleFinish();
+  };
+
+  const handleFinish = () => {
+    setIsGenerating(true);
+    // Slight delay is handled in the parent's async call, but visual feedback here
+    onComplete(data); 
+  };
+
+  if (isGenerating) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-8 bg-black">
+         <div className="relative">
+            <div className="w-24 h-24 rounded-full border-t-2 border-l-2 border-primary animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-b-2 border-r-2 border-primary/30 animate-spin-slow"></div>
+            <Cpu className="w-8 h-8 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+         </div>
+         <div className="space-y-2">
+            <h2 className="text-2xl font-mono font-bold text-white tracking-[0.2em] animate-pulse">GENERATING PROTOCOLS</h2>
+            <div className="h-0.5 w-full max-w-[200px] bg-gray-800 mx-auto overflow-hidden">
+                <div className="h-full bg-primary animate-progress"></div>
+            </div>
+            <p className="text-xs text-primary font-mono mt-4">Accessing Tactical Database...</p>
+            <p className="text-[10px] text-gray-500 font-mono">Compiling {data.goal} parameters for {data.experience} class agent.</p>
+         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col justify-center p-6 max-w-md mx-auto bg-black font-mono">
+      <div className="mb-12">
+         <div className="flex justify-between items-center mb-4">
+             <span className="text-primary text-xs font-mono uppercase tracking-widest">System Config // 00{step}</span>
+            <span className="text-gray-500 text-xs font-mono">{step} / 3</span>
+         </div>
+         <ProgressBar progress={(step / 3) * 100} className="!h-0.5" />
+      </div>
+
+      <div className="glass-panel p-8 border border-white/10 space-y-10 animate-fade-in relative">
+        <div className="absolute -top-2 -left-2 w-4 h-4 border-t border-l border-white/20"></div>
+        <div className="absolute -bottom-2 -right-2 w-4 h-4 border-b border-r border-white/20"></div>
+
+        {step === 1 && (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-4xl font-black text-white mb-2 tracking-tighter uppercase">Identity</h2>
+              <p className="text-xs text-gray-400 font-sans tracking-wide">Enter your operational designation.</p>
+            </div>
+            <div className="relative">
+                <Input 
+                autoFocus
+                value={data.codename}
+                onChange={(e) => setData({...data, codename: e.target.value})}
+                placeholder="CODENAME"
+                className="text-center text-3xl font-mono tracking-widest uppercase !border-primary/50 !bg-primary/5 focus:!bg-primary/10 py-6"
+                />
+                <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"></div>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-4xl font-black text-white mb-2 tracking-tighter uppercase">Capacity</h2>
+              <p className="text-xs text-gray-400 font-sans tracking-wide">Select current operating capability.</p>
+            </div>
+            <div className="grid gap-4">
+               {['BEGINNER', 'INTERMEDIATE', 'EXPERT'].map((level) => (
+                 <button 
+                    key={level}
+                    onClick={() => setData({...data, experience: level as any})}
+                    className={`p-5 border text-left transition-all group relative overflow-hidden ${data.experience === level ? 'border-primary bg-primary/10 text-white' : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/30'}`}
+                 >
+                    {data.experience === level && <div className="absolute inset-0 bg-primary/5 animate-pulse"></div>}
+                    <div className="flex justify-between items-center relative z-10">
+                       <span className="text-sm tracking-[0.2em] font-bold">{level}</span>
+                       {data.experience === level && <Cpu className="w-4 h-4 text-primary" />}
+                    </div>
+                 </button>
+               ))}
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-4xl font-black text-white mb-2 tracking-tighter uppercase">Directive</h2>
+              <p className="text-xs text-gray-400 font-sans tracking-wide">Define primary mission parameter.</p>
+            </div>
+            <div className="grid gap-4">
+               {[
+                 { id: 'STRENGTH', label: 'STRENGTH', desc: 'Max Force Output' },
+                 { id: 'HYPERTROPHY', label: 'HYPERTROPHY', desc: 'Muscular Volume' },
+                 { id: 'ENDURANCE', label: 'ENDURANCE', desc: 'Sustained Output' }
+               ].map((goal) => (
+                 <button 
+                    key={goal.id}
+                    onClick={() => setData({...data, goal: goal.id as any})}
+                    className={`p-5 border text-left transition-all ${data.goal === goal.id ? 'border-primary bg-primary/10 text-white' : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/30'}`}
+                 >
+                    <div className="text-sm font-bold tracking-[0.2em] mb-1">{goal.label}</div>
+                    <div className="text-[10px] text-gray-500 font-mono uppercase">{goal.desc}</div>
+                 </button>
+               ))}
+            </div>
+          </div>
+        )}
+
+        <div className="pt-6 flex justify-between items-center border-t border-white/5">
+           {step > 1 ? (
+             <button onClick={() => setStep(step - 1)} className="text-xs text-gray-500 hover:text-white uppercase tracking-wider font-mono px-2">
+                // Back
+             </button>
+           ) : <div></div>}
+           <Button onClick={handleNext} className="w-36">
+              {step === 3 ? 'Initialize' : 'Next >>'}
+           </Button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
 
 // 2. EXERCISE MODAL
 const ExerciseModal: React.FC<{ 
@@ -118,31 +239,63 @@ const ExerciseModal: React.FC<{
 }> = ({ exercise, onClose, onAddToRoutine, actionLabel = "Add to Active Mission" }) => {
   if (!exercise) return null;
 
+  // Fallback instructions if API returns empty
+  const hasInstructions = Array.isArray(exercise.instructions) && exercise.instructions.length > 0;
+  const displayInstructions = hasInstructions ? exercise.instructions : [
+    `Prepare your equipment: ${exercise.equipment}.`,
+    `Focus on the target muscle: ${exercise.target}.`,
+    `Ensure proper form and perform the movement with control.`,
+    `Maintain tension on the ${exercise.bodyPart} throughout the set.`
+  ];
+
+  const targetImg = getTargetImageUrl(exercise.bodyPart);
+  const equipImg = getEquipmentImageUrl(exercise.equipment);
+  
+  // Use imageUrl (PNG) for header, fallback to gifUrl if imageUrl is missing
+  const headerImage = exercise.imageUrl || exercise.gifUrl;
+  
+  // Use gifUrl for bottom section if available
+  const bottomGif = exercise.gifUrl;
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-2xl bg-surface border border-white/10 relative overflow-hidden flex flex-col max-h-[90vh] shadow-[0_0_50px_rgba(0,0,0,0.8)]" onClick={(e) => e.stopPropagation()}>
         
-        {/* Header / GIF Area */}
+        {/* Header */}
         <div className="relative shrink-0 bg-white/5 border-b border-white/10 flex flex-col">
             <button onClick={onClose} className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white hover:text-primary rounded-full backdrop-blur-md">
               <X className="w-5 h-5" />
             </button>
             
-            <div className="w-full aspect-video md:aspect-[2/1] relative flex justify-center bg-black">
-               <img src={getExerciseImage(exercise)} alt={exercise.name} className="h-full w-full object-cover opacity-80" />
+            {/* Visual Display (Header Image) */}
+            <div className="w-full h-48 bg-white/5 flex items-center justify-center relative overflow-hidden">
+                {headerImage ? (
+                   <img 
+                      src={headerImage} 
+                      alt={exercise.name} 
+                      className="h-full object-contain opacity-90 mix-blend-lighten" 
+                   />
+                ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 text-gray-600">
+                        <ImageIcon className="w-12 h-12" />
+                        <span className="text-[10px] font-mono uppercase">Visual Unavailable</span>
+                    </div>
+                )}
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent"></div>
             </div>
 
-            <div className="p-6 pb-2">
-               <div className="flex justify-between items-start">
+            <div className="p-6 pb-2 -mt-12 relative z-10">
+               <div className="flex justify-between items-end">
                   <div>
-                    <h2 className="text-2xl font-light text-white uppercase tracking-wide break-words max-w-md">{exercise.name}</h2>
+                    <h2 className="text-2xl font-light text-white uppercase tracking-wide break-words max-w-md font-mono drop-shadow-md">{exercise.name}</h2>
                     <div className="flex gap-2 mt-2">
                        <Badge variant="primary">{exercise.bodyPart}</Badge>
                        <Badge variant="outline">{exercise.equipment}</Badge>
                     </div>
                   </div>
                   <div className="text-right">
-                     <span className="text-[10px] text-gray-500 uppercase block">Target</span>
+                     <span className="text-[10px] text-gray-400 uppercase block font-mono">Target</span>
                      <span className="text-primary font-mono text-sm uppercase">{exercise.target}</span>
                   </div>
                </div>
@@ -154,42 +307,84 @@ const ExerciseModal: React.FC<{
           
           {/* Detailed Info Grid */}
           <div className="grid grid-cols-2 gap-4">
-             <div className="bg-white/5 p-3 border border-white/5 rounded-sm">
+             {/* Target Muscle Visual */}
+             <div 
+               className="bg-white/5 border border-white/5 rounded-sm overflow-hidden relative group h-24 bg-cover bg-center"
+               style={{ backgroundImage: `url(${targetImg})` }}
+             >
+                <div className="absolute inset-0 bg-black/60"></div> 
+                <div className="absolute inset-0 flex flex-col justify-end p-3">
+                  <div className="flex items-center gap-2 mb-1 text-primary relative z-10">
+                    <Target className="w-4 h-4" />
+                    <span className="text-[10px] uppercase tracking-widest font-mono">Target</span>
+                  </div>
+                  <span className="text-sm font-bold text-white capitalize font-mono relative z-10">{exercise.bodyPart}</span>
+                </div>
+             </div>
+
+             {/* Equipment Visual */}
+             <div 
+                className="bg-white/5 border border-white/5 rounded-sm overflow-hidden relative group h-24 bg-cover bg-center"
+                style={{ backgroundImage: `url(${equipImg})` }}
+             >
+                 <div className="absolute inset-0 bg-black/60"></div>
+                <div className="absolute inset-0 flex flex-col justify-end p-3">
+                  <div className="flex items-center gap-2 mb-1 text-primary relative z-10">
+                    <Zap className="w-4 h-4" />
+                    <span className="text-[10px] uppercase tracking-widest font-mono">Equipment</span>
+                  </div>
+                  <span className="text-sm font-bold text-white capitalize font-mono relative z-10">{exercise.equipment}</span>
+                </div>
+             </div>
+          </div>
+
+          <div className="bg-white/5 p-3 border border-white/5 rounded-sm">
                 <div className="flex items-center gap-2 mb-2 text-gray-400">
-                   <Target className="w-4 h-4" />
-                   <span className="text-[10px] uppercase tracking-widest">Secondary Muscles</span>
+                   <span className="text-[10px] uppercase tracking-widest font-mono">Secondary Muscles</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
                    {exercise.secondaryMuscles.map(m => (
-                      <span key={m} className="text-xs text-gray-300 bg-black/40 px-2 py-0.5 rounded-sm capitalize">{m}</span>
+                      <span key={m} className="text-xs text-gray-300 bg-black/40 px-2 py-0.5 rounded-sm capitalize font-mono">{m}</span>
                    ))}
                 </div>
-             </div>
-             <div className="bg-white/5 p-3 border border-white/5 rounded-sm">
-                <div className="flex items-center gap-2 mb-2 text-gray-400">
-                   <Zap className="w-4 h-4" />
-                   <span className="text-[10px] uppercase tracking-widest">Equipment</span>
-                </div>
-                <p className="text-sm text-gray-200 capitalize">{exercise.equipment}</p>
-             </div>
-          </div>
+           </div>
           
           {/* Instructions */}
           <div className="border-t border-white/10 pt-4">
-            <label className="text-xs text-gray-500 uppercase tracking-widest block mb-4 flex items-center gap-2">
+            <label className="text-xs text-gray-500 uppercase tracking-widest block mb-4 flex items-center gap-2 font-mono">
                <FileText className="w-3 h-3" /> Operational Sequence
             </label>
+            
             <div className="space-y-4">
-               {exercise.instructions.map((step, idx) => (
+               {displayInstructions.map((step, idx) => (
                   <div key={idx} className="flex gap-4 group">
                      <div className="shrink-0 w-6 h-6 rounded-full bg-white/5 text-primary border border-white/10 flex items-center justify-center text-xs font-mono group-hover:border-primary group-hover:bg-primary/10 transition-colors">
                         {idx + 1}
                      </div>
-                     <p className="text-sm font-light text-gray-300 leading-relaxed pt-0.5">{step}</p>
+                     <p className="text-sm font-light text-gray-300 leading-relaxed pt-0.5 font-mono">{step}</p>
                   </div>
                ))}
+               {!hasInstructions && (
+                 <p className="text-[10px] text-gray-500 font-mono italic mt-4">* Standard operational procedure generated. Specific API data unavailable.</p>
+               )}
             </div>
           </div>
+
+          {/* Bottom Visual GIF/Video (Supplementary) */}
+          {bottomGif && (
+            <div className="border-t border-white/10 pt-4">
+               <label className="text-xs text-gray-500 uppercase tracking-widest block mb-4 flex items-center gap-2 font-mono">
+                  <MonitorPlay className="w-3 h-3" /> Visual Demonstration
+               </label>
+               <div className="w-full h-48 bg-black/40 border border-white/5 rounded-sm flex items-center justify-center overflow-hidden">
+                   <img 
+                      src={bottomGif} 
+                      alt="Demonstration" 
+                      className="h-full object-contain" 
+                   />
+               </div>
+            </div>
+          )}
         </div>
 
         {onAddToRoutine && (
@@ -204,165 +399,105 @@ const ExerciseModal: React.FC<{
   );
 };
 
-// 3. DASHBOARD VIEW (MISSIONS)
+// 3. DASHBOARD VIEW
 const DashboardView: React.FC<{ 
   user: UserProfile; 
   routines: Routine[]; 
-  onSelectRoutine: (r: Routine) => void;
+  onSelectRoutine: (r: Routine) => void; 
   onCreateRoutine: () => void;
   onForkRoutine: (r: Routine) => void;
 }> = ({ user, routines, onSelectRoutine, onCreateRoutine, onForkRoutine }) => {
-  const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState<string[]>([]);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-
-  const toggleFilter = (f: string) => {
-    if (f === 'ALL') {
-      setFilters([]);
-      return;
-    }
-    if (filters.includes(f)) setFilters(filters.filter(x => x !== f));
-    else setFilters([...filters, f]);
-  };
-
-  const filteredRoutines = routines.filter(r => {
-    const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase());
-    
-    // Filter Logic
-    let matchesActive = true;
-    let matchesRecent = true;
-
-    if (filters.length > 0) {
-      if (filters.includes('ACTIVE')) matchesActive = r.isFavorite === true;
-      if (filters.includes('RECENT')) matchesRecent = r.lastPerformed !== undefined;
-    }
-    
-    return matchesSearch && matchesActive && matchesRecent;
-  });
+  const activeRoutine = routines.find(r => r.isFavorite);
+  const otherRoutines = routines.filter(r => !r.isFavorite);
 
   return (
-    <div className="space-y-6 animate-fade-in pb-28">
-      <header className="flex justify-between items-end border-b border-white/10 pb-4">
-        <div>
-          <h2 className="text-3xl font-light text-white">MISSIONS</h2>
-          <p className="text-xs text-primary uppercase tracking-[0.2em]">Select Mission Protocol</p>
-        </div>
-        <Button variant="secondary" onClick={() => setShowCreateModal(true)} className="!py-2 !px-4 text-xs">
-          <Plus className="w-4 h-4 mr-2 inline" /> Initialize
-        </Button>
-      </header>
+    <div className="pb-24 space-y-8 animate-fade-in">
+       <ScreenHeader 
+         title="Command Center" 
+         subtitle={`Agent ${user.name}`} 
+         rightAction={
+            <div className="text-right">
+               <div className="text-xs text-gray-500 font-mono">LEVEL {user.level}</div>
+               <div className="text-xl font-bold text-primary font-mono">{user.currentXp} XP</div>
+            </div>
+         }
+       />
 
-      {/* Search & Filter Bar */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3.5 w-4 h-4 text-gray-500" />
-          <Input 
-            placeholder="Search missions..." 
-            className="pl-10"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <button 
-           onClick={() => setShowFilterModal(true)}
-           className={`px-4 flex items-center gap-2 border ${filters.length > 0 ? 'bg-primary text-black border-primary' : 'bg-surfaceHighlight border-white/20 text-gray-400 hover:text-white'} transition-colors`}
-        >
-           <SlidersHorizontal className="w-4 h-4" />
-        </button>
-      </div>
-
-      <FilterModal 
-        isOpen={showFilterModal} 
-        onClose={() => setShowFilterModal(false)}
-        selectedFilters={filters}
-        onToggleFilter={toggleFilter}
-        sections={[
-          { title: "Status", options: ["ALL", "ACTIVE", "RECENT"] }
-        ]}
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredRoutines.map(routine => {
-          const estXP = calculateEstimatedXP(routine);
-          return (
-          <Card key={routine.id} onClick={() => onSelectRoutine(routine)} className={`group cursor-pointer relative overflow-hidden ${routine.isFavorite ? 'border-primary/40' : 'border-transparent'}`}>
-             <div className="flex justify-between items-start mb-4">
-               <div className={`p-2 transition-colors ${routine.isFavorite ? 'bg-primary text-black' : 'bg-white/5 text-gray-400 group-hover:text-white'}`}>
-                 <Activity className="w-6 h-6" />
-               </div>
-               <div className="flex gap-2">
-                  <Badge variant="outline">+{estXP} XP</Badge>
-                  {routine.isFavorite && <Badge variant="primary">ACTIVE</Badge>}
-               </div>
+       {/* Quick Stats / Status */}
+       <div className="grid grid-cols-2 gap-4">
+          <div className="glass-panel p-4 border border-white/10">
+             <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Status</div>
+             <div className="text-primary font-mono uppercase text-sm flex items-center gap-2">
+                <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                Active
              </div>
-             <h3 className="text-xl font-normal text-white mb-1 group-hover:text-primary transition-colors">{routine.name}</h3>
-             <p className="text-sm text-gray-500 font-light line-clamp-2 mb-4">{routine.description || "No description provided."}</p>
-             
-             <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
-               <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <Dumbbell className="w-3 h-3" /> {routine.exercises.length} Exercises
-               </div>
-               {routine.lastPerformed && <span className="text-[10px] text-gray-600 uppercase">Last: {routine.lastPerformed}</span>}
+          </div>
+          <div className="glass-panel p-4 border border-white/10">
+             <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Next Goal</div>
+             <div className="text-white font-mono uppercase text-sm">
+                {Math.max(0, user.xpRequired - user.currentXp)} XP REQ
              </div>
-          </Card>
-        )})}
-        
-        {filteredRoutines.length === 0 && (
-           <div className="col-span-full py-12 text-center border border-dashed border-gray-800 text-gray-600 font-light rounded-lg">
-             No missions found matching query.
-           </div>
-        )}
-      </div>
+          </div>
+       </div>
 
-      {/* CREATE MODAL */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
-           <div className="w-full max-w-lg glass-panel p-6 space-y-6 relative border border-white/20">
-              <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X className="w-5 h-5"/></button>
-              <div>
-                <h3 className="text-xl font-light text-white mb-1">INITIALIZE PROTOCOL</h3>
-                <p className="text-xs text-gray-500 uppercase">Select creation method</p>
+       {/* Active Mission */}
+       <div>
+         <div className="flex justify-between items-end mb-4 border-b border-white/10 pb-2">
+           <h3 className="text-sm font-mono uppercase tracking-widest text-primary">Active Mission</h3>
+         </div>
+         {activeRoutine ? (
+           <Card onClick={() => onSelectRoutine(activeRoutine)} className="border-l-primary bg-primary/5 cursor-pointer group relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-2 opacity-50">
+                 <Cpu className="w-12 h-12 text-primary rotate-12" />
               </div>
-              
-              <div className="grid grid-cols-1 gap-4">
-                <button 
-                  onClick={() => { setShowCreateModal(false); onCreateRoutine(); }}
-                  className="p-4 border border-white/10 bg-white/5 hover:bg-primary/10 hover:border-primary/50 transition-all text-left flex items-center gap-4 group"
-                >
-                   <div className="bg-black p-3 rounded-full border border-white/10 group-hover:border-primary text-white group-hover:text-primary">
-                     <Plus className="w-6 h-6" />
-                   </div>
-                   <div>
-                     <h4 className="text-sm font-bold text-white uppercase group-hover:text-primary">Blank Protocol</h4>
-                     <p className="text-xs text-gray-500">Create new mission from scratch. Requires manual exercise selection.</p>
-                   </div>
-                </button>
-
-                <div className="border-t border-white/10 pt-4">
-                  <p className="text-[10px] text-gray-500 uppercase mb-3">Or Fork Existing Protocol</p>
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                     {routines.map(r => (
-                       <button 
-                         key={r.id}
-                         onClick={() => { setShowCreateModal(false); onForkRoutine(r); }}
-                         className="w-full p-3 border border-white/10 hover:bg-white/5 text-left flex justify-between items-center text-xs group"
-                       >
-                         <span className="text-gray-300 group-hover:text-white uppercase">{r.name}</span>
-                         <Copy className="w-3 h-3 text-gray-600 group-hover:text-primary" />
-                       </button>
-                     ))}
-                  </div>
-                </div>
+              <div className="relative z-10">
+                 <h4 className="text-lg font-bold text-white uppercase font-mono group-hover:text-primary transition-colors">{activeRoutine.name}</h4>
+                 <p className="text-xs text-gray-400 mt-1 max-w-[80%]">{activeRoutine.description || "No description available."}</p>
+                 <div className="flex gap-4 mt-4 text-[10px] font-mono text-gray-500 uppercase">
+                    <span className="flex items-center gap-1"><Dumbbell className="w-3 h-3" /> {activeRoutine.exercises.length} Exercises</span>
+                    <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> ~{calculateEstimatedXP(activeRoutine)} XP</span>
+                 </div>
               </div>
+           </Card>
+         ) : (
+           <div className="p-6 border border-dashed border-white/20 rounded-lg text-center space-y-2">
+              <p className="text-sm text-gray-500">No active mission protocol assigned.</p>
+              <Button variant="secondary" onClick={() => document.getElementById('protocols-list')?.scrollIntoView({ behavior: 'smooth'})}>Select Protocol</Button>
            </div>
-        </div>
-      )}
+         )}
+       </div>
+
+       {/* All Routines */}
+       <div id="protocols-list">
+          <div className="flex justify-between items-end mb-4 border-b border-white/10 pb-2">
+            <h3 className="text-sm font-mono uppercase tracking-widest text-white">Available Protocols</h3>
+            <button onClick={onCreateRoutine} className="text-xs text-primary hover:text-white uppercase tracking-wider flex items-center gap-1">
+               <Plus className="w-3 h-3" /> Create New
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+             {otherRoutines.map(routine => (
+                <Card key={routine.id} onClick={() => onSelectRoutine(routine)} className="cursor-pointer group hover:bg-white/5">
+                   <div className="flex justify-between items-start">
+                      <div>
+                         <h4 className="font-bold text-gray-300 uppercase font-mono group-hover:text-white transition-colors">{routine.name}</h4>
+                         <p className="text-xs text-gray-500 mt-1">{routine.exercises.length} Exercises</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-white" />
+                   </div>
+                </Card>
+             ))}
+             {otherRoutines.length === 0 && (
+                <p className="text-xs text-gray-600 font-mono italic">No additional protocols in database.</p>
+             )}
+          </div>
+       </div>
     </div>
   );
 };
 
-// 4. ROUTINE DETAIL & EDIT VIEW
+// 4. ROUTINE DETAIL VIEW
 const RoutineDetailView: React.FC<{
   routine: Routine;
   onBack: () => void;
@@ -370,160 +505,143 @@ const RoutineDetailView: React.FC<{
   onSave: (r: Routine) => void;
   onDelete: (id: string) => void;
   onAddExercises: () => void;
-  isNew?: boolean;
-}> = ({ routine, onBack, onStart, onSave, onDelete, onAddExercises, isNew }) => {
-  const [editedRoutine, setEditedRoutine] = useState<Routine>(JSON.parse(JSON.stringify(routine)));
-  const [isEditing, setIsEditing] = useState(isNew || false);
+  onViewDetails: (ex: RoutineExercise) => void;
+  isNew: boolean;
+}> = ({ routine, onBack, onStart, onSave, onDelete, onAddExercises, onViewDetails, isNew }) => {
+  const [isEditing, setIsEditing] = useState(isNew);
+  const [editedRoutine, setEditedRoutine] = useState(routine);
 
-  useEffect(() => {
-    setEditedRoutine(JSON.parse(JSON.stringify(routine)));
-  }, [routine]);
-
-  const updateExercise = (id: string, field: keyof RoutineExercise, value: any) => {
-    setEditedRoutine(prev => ({
-      ...prev,
-      exercises: prev.exercises.map(ex => ex.id === id ? { ...ex, [field]: value } : ex)
-    }));
+  const handleUpdateExercise = (index: number, field: keyof RoutineExercise, value: any) => {
+     const updatedExercises = [...editedRoutine.exercises];
+     updatedExercises[index] = { ...updatedExercises[index], [field]: value };
+     setEditedRoutine({ ...editedRoutine, exercises: updatedExercises });
   };
 
-  const removeExercise = (id: string) => {
-    setEditedRoutine(prev => ({
-      ...prev,
-      exercises: prev.exercises.filter(ex => ex.id !== id)
-    }));
+  const removeExercise = (index: number) => {
+     const updatedExercises = [...editedRoutine.exercises];
+     updatedExercises.splice(index, 1);
+     setEditedRoutine({ ...editedRoutine, exercises: updatedExercises });
   };
 
   const toggleFavorite = () => {
-    const updated = { ...editedRoutine, isFavorite: !editedRoutine.isFavorite };
-    setEditedRoutine(updated);
-    onSave(updated); 
-  };
-
-  const handleSaveChanges = () => {
-    onSave(editedRoutine);
-    setIsEditing(false);
+     const updated = { ...editedRoutine, isFavorite: !editedRoutine.isFavorite };
+     setEditedRoutine(updated);
+     if (!isEditing) onSave(updated);
   };
 
   return (
-    <div className="pb-28 space-y-6">
-      <header className="flex items-center justify-between pb-4 border-b border-white/10">
-        <button onClick={onBack} className="text-gray-400 hover:text-white flex items-center text-xs uppercase tracking-widest">
-          <ChevronLeft className="w-4 h-4 mr-1" /> Back
-        </button>
-        <div className="flex gap-2">
-          {!isEditing && (
-             <button onClick={toggleFavorite} className={`p-2 border transition-colors ${editedRoutine.isFavorite ? 'bg-primary text-black border-primary' : 'border-white/20 text-gray-400'}`}>
-               <Check className="w-4 h-4" />
-             </button>
-          )}
-          <button onClick={() => setIsEditing(!isEditing)} className={`p-2 border transition-colors ${isEditing ? 'bg-white text-black border-white' : 'border-white/20 text-gray-400'}`}>
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
-
-      <div className="space-y-4">
-        {isEditing ? (
-           <div className="space-y-2">
-             <Input value={editedRoutine.name} onChange={(e) => setEditedRoutine({...editedRoutine, name: e.target.value})} className="text-xl font-light" placeholder="Mission Name" />
-             <textarea 
-               value={editedRoutine.description} 
-               onChange={(e) => setEditedRoutine({...editedRoutine, description: e.target.value})}
-               className="w-full bg-surfaceHighlight border-b border-white/20 px-4 py-3 text-sm font-light text-white focus:outline-none focus:border-primary transition-all placeholder-gray-600 resize-none h-24"
-               placeholder="Operational Description..."
-             />
-           </div>
-        ) : (
-           <>
-             <h1 className="text-4xl font-light text-white uppercase">{editedRoutine.name}</h1>
-             <p className="text-sm text-gray-400 font-light">{editedRoutine.description || "No specific briefing."}</p>
-           </>
-        )}
-        <div className="flex items-center gap-4">
-           <p className="text-gray-500 font-mono text-xs">{editedRoutine.exercises.length} EXERCISES // ESTIMATED: {editedRoutine.exercises.length * 5} MIN</p>
-           <Badge variant="outline">+{calculateEstimatedXP(editedRoutine)} XP</Badge>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {isEditing && (
-           <Button variant="secondary" onClick={onAddExercises} className="w-full border-dashed border-white/30 text-gray-400 hover:text-primary hover:border-primary">
-             <Plus className="w-4 h-4 mr-2" /> Add Exercise Data
-           </Button>
-        )}
-
-        {editedRoutine.exercises.map((ex, index) => (
-          <div key={ex.id} className="glass-panel p-4 border border-white/10 relative group">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-white overflow-hidden rounded-sm shrink-0">
-                  <img src={getExerciseImage(ex)} alt={ex.name} className="w-full h-full object-contain" />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                   <h4 className="text-white font-medium">{ex.name}</h4>
-                   {isEditing && (
-                     <button onClick={() => removeExercise(ex.id)} className="text-red-500/50 hover:text-red-500">
-                       <Trash2 className="w-4 h-4" />
+    <div className="pb-32 space-y-6 h-full flex flex-col">
+       <ScreenHeader 
+         title="Protocol Details" 
+         onBack={onBack}
+         rightAction={
+            <div className="flex gap-2">
+               {isEditing ? (
+                  <>
+                     <button onClick={() => onDelete(routine.id)} className="p-2 rounded-full border border-red-500/50 text-red-500 hover:bg-red-500/10">
+                        <Trash2 className="w-4 h-4" />
                      </button>
+                     <button onClick={() => { onSave(editedRoutine); setIsEditing(false); }} className="p-2 rounded-full border border-primary text-primary hover:bg-primary/10">
+                        <Check className="w-4 h-4" />
+                     </button>
+                  </>
+               ) : (
+                  <>
+                     <button onClick={toggleFavorite} className={`p-2 rounded-full border ${editedRoutine.isFavorite ? 'bg-primary text-black border-primary' : 'border-white/20 text-gray-400'}`}>
+                        <Zap className="w-4 h-4" />
+                     </button>
+                     <button onClick={() => setIsEditing(!isEditing)} className="p-2 rounded-full border border-white/20 text-gray-400 hover:text-white">
+                        <Settings className="w-4 h-4" />
+                     </button>
+                  </>
+               )}
+            </div>
+         }
+       />
+
+       <div className="space-y-4">
+          {isEditing ? (
+             <div className="space-y-4 animate-fade-in">
+                <div>
+                   <label className="text-[10px] uppercase text-gray-500 font-mono">Protocol Designation</label>
+                   <Input value={editedRoutine.name} onChange={e => setEditedRoutine({...editedRoutine, name: e.target.value})} />
+                </div>
+                <div>
+                   <label className="text-[10px] uppercase text-gray-500 font-mono">Mission Brief</label>
+                   <Input value={editedRoutine.description} onChange={e => setEditedRoutine({...editedRoutine, description: e.target.value})} />
+                </div>
+             </div>
+          ) : (
+             <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-white font-mono uppercase">{editedRoutine.name}</h2>
+                <p className="text-sm text-gray-400 font-mono">{editedRoutine.description}</p>
+             </div>
+          )}
+          
+          {/* Initialize Mission Button moved up */}
+          {!isEditing && (
+            <Button onClick={() => onStart(editedRoutine)} className="w-full shadow-[0_0_20px_rgba(0,255,255,0.3)]">
+                Initialize Mission
+            </Button>
+          )}
+       </div>
+
+       <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar">
+          <div className="flex justify-between items-center border-b border-white/10 pb-2">
+             <h3 className="text-sm font-mono uppercase tracking-widest text-primary">Sequence</h3>
+             {isEditing && (
+                <button onClick={onAddExercises} className="text-xs text-primary hover:text-white uppercase tracking-wider flex items-center gap-1">
+                   <Plus className="w-3 h-3" /> Add Unit
+                </button>
+             )}
+          </div>
+
+          {editedRoutine.exercises.length === 0 ? (
+             <div className="p-8 border border-dashed border-white/20 text-center text-gray-500 font-mono text-xs">
+                No exercises in sequence.
+                {isEditing && <Button variant="ghost" onClick={onAddExercises} className="mt-4">Add Exercises</Button>}
+             </div>
+          ) : (
+             editedRoutine.exercises.map((ex, idx) => (
+                <div key={ex.id} className="glass-panel p-4 border border-white/10 flex flex-col gap-4 relative">
+                   <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-3">
+                         <span className="text-xs text-gray-600 font-mono">0{idx + 1}</span>
+                         <h4 className="font-bold text-white uppercase font-mono text-sm cursor-pointer hover:text-primary" onClick={() => onViewDetails(ex)}>{ex.name}</h4>
+                      </div>
+                      {isEditing && (
+                         <button onClick={() => removeExercise(idx)} className="text-red-500 hover:text-red-400 p-1">
+                            <X className="w-4 h-4" />
+                         </button>
+                      )}
+                   </div>
+
+                   {isEditing ? (
+                      <div className="grid grid-cols-3 gap-2">
+                         <div>
+                            <label className="text-[9px] uppercase text-gray-500 font-mono">Sets</label>
+                            <input type="number" value={ex.targetSets} onChange={e => handleUpdateExercise(idx, 'targetSets', parseInt(e.target.value))} className="w-full bg-black/30 border border-white/10 px-2 py-1 text-xs text-white text-center" />
+                         </div>
+                         <div>
+                            <label className="text-[9px] uppercase text-gray-500 font-mono">Reps</label>
+                            <input value={ex.targetReps} onChange={e => handleUpdateExercise(idx, 'targetReps', e.target.value)} className="w-full bg-black/30 border border-white/10 px-2 py-1 text-xs text-white text-center" />
+                         </div>
+                         <div>
+                            <label className="text-[9px] uppercase text-gray-500 font-mono">Kg</label>
+                            <input value={ex.targetWeight} onChange={e => handleUpdateExercise(idx, 'targetWeight', e.target.value)} className="w-full bg-black/30 border border-white/10 px-2 py-1 text-xs text-white text-center" />
+                         </div>
+                      </div>
+                   ) : (
+                      <div className="flex gap-4 text-xs text-gray-400 font-mono">
+                         <span>{ex.targetSets} SETS</span>
+                         <span>{ex.targetReps} REPS</span>
+                         <span>{ex.targetWeight} KG</span>
+                      </div>
                    )}
                 </div>
-                
-                <div className="grid grid-cols-3 gap-4 mt-3">
-                  <div>
-                    <label className="text-[10px] text-gray-500 uppercase">Sets</label>
-                    {isEditing ? (
-                      <Input 
-                         type="number" 
-                         value={ex.targetSets} 
-                         onChange={(e) => updateExercise(ex.id, 'targetSets', parseInt(e.target.value) || 0)}
-                         className="!py-1 !text-xs"
-                      />
-                    ) : (
-                      <p className="text-sm font-mono">{ex.targetSets}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-500 uppercase">Reps</label>
-                    {isEditing ? (
-                      <Input 
-                         value={ex.targetReps} 
-                         onChange={(e) => updateExercise(ex.id, 'targetReps', e.target.value)}
-                         className="!py-1 !text-xs"
-                      />
-                    ) : (
-                      <p className="text-sm font-mono">{ex.targetReps}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-500 uppercase">Load (KG)</label>
-                    {isEditing ? (
-                      <Input 
-                         value={ex.targetWeight} 
-                         onChange={(e) => updateExercise(ex.id, 'targetWeight', e.target.value)}
-                         className="!py-1 !text-xs"
-                      />
-                    ) : (
-                      <p className="text-sm font-mono">{ex.targetWeight}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="fixed bottom-24 left-6 right-6 flex gap-4">
-         {isEditing ? (
-           <Button onClick={handleSaveChanges} className="w-full">
-             <Save className="w-4 h-4 mr-2" /> Save Protocol
-           </Button>
-         ) : (
-           <Button onClick={() => onStart(editedRoutine)} className="w-full">
-             <Play className="w-4 h-4 mr-2" /> Start Mission
-           </Button>
-         )}
-      </div>
+             ))
+          )}
+       </div>
     </div>
   );
 };
@@ -535,7 +653,8 @@ const WorkoutView: React.FC<{
   onAbort: (s: WorkoutSession) => void;
   onUpdateSession: (s: WorkoutSession) => void;
   onViewDetails: (ex: RoutineExercise) => void;
-}> = ({ session, onFinish, onAbort, onUpdateSession, onViewDetails }) => {
+  onBack: () => void;
+}> = ({ session, onFinish, onAbort, onUpdateSession, onViewDetails, onBack }) => {
   const [elapsed, setElapsed] = useState(0);
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
 
@@ -558,6 +677,18 @@ const WorkoutView: React.FC<{
     onUpdateSession({ ...session, exercises: updatedExercises });
   };
 
+  const updateSetLog = (exId: string, setIndex: number, field: 'weight' | 'reps', value: string) => {
+    const updatedExercises = session.exercises.map(ex => {
+        if (ex.id === exId) {
+          const newLogs = [...ex.setLogs];
+          newLogs[setIndex] = { ...newLogs[setIndex], [field]: value };
+          return { ...ex, setLogs: newLogs };
+        }
+        return ex;
+      });
+      onUpdateSession({ ...session, exercises: updatedExercises });
+  };
+
   const markExerciseComplete = (exId: string) => {
     const updatedExercises = session.exercises.map(ex => {
       if (ex.id === exId) {
@@ -570,19 +701,29 @@ const WorkoutView: React.FC<{
     onUpdateSession({ ...session, exercises: updatedExercises });
   };
 
+  const totalSets = session.exercises.reduce((acc, ex) => acc + ex.targetSets, 0);
+  const totalCompletedSets = session.exercises.reduce((acc, ex) => acc + ex.setLogs.filter(s => s.completed).length, 0);
+  const workoutProgress = totalSets > 0 ? (totalCompletedSets / totalSets) * 100 : 0;
+
   return (
-    <div className="pb-28 space-y-6 relative h-full flex flex-col">
-       <div className="sticky top-0 bg-background/80 backdrop-blur-md z-20 py-4 border-b border-white/10 flex justify-between items-center">
-         <div>
-           <h2 className="text-lg text-primary uppercase tracking-widest animate-pulse">Mission Active</h2>
-           <p className="text-xs text-white">{session.routineName}</p>
+    <div className="pb-32 space-y-6 relative h-full flex flex-col">
+       <div className="sticky top-0 bg-background/80 backdrop-blur-md z-20 pt-4 pb-0 border-b border-white/10">
+         <div className="flex items-center gap-4 mb-4">
+             <button onClick={onBack} className="p-1 text-gray-400 hover:text-white transition-colors">
+               <ChevronLeft className="w-6 h-6" />
+             </button>
+            <div className="flex-1">
+              <h2 className="text-lg text-primary uppercase tracking-widest animate-pulse font-mono">Mission Active</h2>
+              <p className="text-xs text-white font-mono">{session.routineName}</p>
+            </div>
+            <div className="font-mono text-2xl font-light text-white">
+              {new Date(elapsed).toISOString().substr(11, 8)}
+            </div>
          </div>
-         <div className="font-mono text-2xl font-light text-white">
-           {new Date(elapsed).toISOString().substr(11, 8)}
-         </div>
+         <ProgressBar progress={workoutProgress} className="h-1" />
        </div>
 
-       <div className="space-y-4 flex-1 overflow-y-auto">
+       <div className="space-y-4 flex-1 overflow-y-auto pt-4 pb-12 custom-scrollbar">
          {session.exercises.map(ex => {
            const completedSets = ex.setLogs.filter(s => s.completed).length;
            const isDone = completedSets === ex.targetSets;
@@ -595,8 +736,8 @@ const WorkoutView: React.FC<{
                  className="p-4 flex items-center justify-between cursor-pointer"
                >
                  <div className="flex items-center gap-4">
-                   <div className="relative w-12 h-12 bg-white rounded-sm overflow-hidden">
-                     <img src={getExerciseImage(ex)} className="w-full h-full object-contain" alt="" />
+                   <div className="relative w-12 h-12 bg-white/5 rounded-sm overflow-hidden flex items-center justify-center">
+                     <Activity className="w-6 h-6 text-gray-500" />
                      {isDone && (
                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center border border-primary">
                          <Check className="w-6 h-6 text-primary" />
@@ -604,7 +745,7 @@ const WorkoutView: React.FC<{
                      )}
                    </div>
                    <div>
-                     <h3 className={`text-lg font-medium ${isDone ? 'text-primary' : 'text-white'}`}>{ex.name}</h3>
+                     <h3 className={`text-lg font-medium font-mono uppercase ${isDone ? 'text-primary' : 'text-white'}`}>{ex.name}</h3>
                      <p className="text-xs text-gray-500 font-mono">{completedSets}/{ex.targetSets} SETS COMPLETED</p>
                    </div>
                  </div>
@@ -616,28 +757,46 @@ const WorkoutView: React.FC<{
                    <div className="flex justify-end gap-2">
                       <button 
                         onClick={(e) => { e.stopPropagation(); onViewDetails(ex); }} 
-                        className="text-[10px] uppercase tracking-wider text-primary border border-primary/30 px-2 py-1 hover:bg-primary/10 flex items-center gap-1"
+                        className="text-[10px] uppercase tracking-wider text-primary border border-primary/30 px-2 py-1 hover:bg-primary/10 flex items-center gap-1 font-mono"
                       >
                          <Info className="w-3 h-3" /> View Guide
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); markExerciseComplete(ex.id); }} 
-                        className="text-[10px] uppercase tracking-wider text-gray-400 border border-white/10 px-2 py-1 hover:bg-white/10"
+                        className="text-[10px] uppercase tracking-wider text-gray-400 border border-white/10 px-2 py-1 hover:bg-white/10 font-mono"
                       >
                          Toggle All
                       </button>
                    </div>
                    
                    <div className="space-y-2">
+                     <div className="flex items-center gap-4 px-2 text-[9px] uppercase text-gray-500 font-mono mb-1">
+                        <span className="w-6 text-center">Set</span>
+                        <div className="flex-1 grid grid-cols-2 gap-2">
+                            <span>Weight (kg)</span>
+                            <span>Reps</span>
+                        </div>
+                        <span className="w-8"></span>
+                     </div>
                      {ex.setLogs.map((set, idx) => (
                        <div key={set.id} className="flex items-center gap-4 bg-white/5 p-2 rounded-sm">
                           <span className="w-6 text-xs text-gray-500 font-mono text-center">{idx + 1}</span>
                           <div className="flex-1 grid grid-cols-2 gap-2">
-                             <div className="bg-black/40 px-3 py-1 text-xs text-gray-300 font-mono flex justify-between">
-                               <span>{set.weight} KG</span>
+                             <div className="bg-black/40 px-2 py-1 text-xs text-gray-300 font-mono flex items-center">
+                               <input 
+                                 className="bg-transparent w-full text-white outline-none"
+                                 value={set.weight}
+                                 onChange={(e) => updateSetLog(ex.id, idx, 'weight', e.target.value)}
+                                 type="number"
+                               />
                              </div>
-                             <div className="bg-black/40 px-3 py-1 text-xs text-gray-300 font-mono flex justify-between">
-                               <span>{set.reps} REPS</span>
+                             <div className="bg-black/40 px-2 py-1 text-xs text-gray-300 font-mono flex items-center">
+                               <input 
+                                 className="bg-transparent w-full text-white outline-none"
+                                 value={set.reps}
+                                 onChange={(e) => updateSetLog(ex.id, idx, 'reps', e.target.value)}
+                                 type="number"
+                               />
                              </div>
                           </div>
                           <button 
@@ -652,7 +811,6 @@ const WorkoutView: React.FC<{
                  </div>
                )}
                
-               {/* Progress bar per exercise */}
                <div className="h-1 bg-gray-900 w-full">
                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(completedSets / ex.targetSets) * 100}%` }}></div>
                </div>
@@ -661,7 +819,8 @@ const WorkoutView: React.FC<{
          })}
        </div>
 
-       <div className="grid grid-cols-2 gap-4 pt-4">
+       {/* Footer Buttons fixed at bottom with enough z-index */}
+       <div className="fixed bottom-6 left-6 right-6 grid grid-cols-2 gap-4 z-50">
          <Button variant="danger" onClick={() => onAbort(session)}>
             Abort Mission
          </Button>
@@ -673,503 +832,320 @@ const WorkoutView: React.FC<{
   );
 };
 
-// 6. EXPLORE VIEW (INTEL)
-const ExploreView: React.FC<{ 
+// 6. EXPLORE VIEW
+const ExploreView: React.FC<{
   onAddExercise: (ex: Exercise) => void;
   onViewDetails: (ex: Exercise) => void;
   onForkRoutine: (r: Routine) => void;
-  isPickerMode?: boolean; 
+  isPickerMode: boolean;
+  onExitPicker: () => void;
   hasActiveMission: boolean;
-  activeMissionExerciseIds?: string[];
-}> = ({ onAddExercise, onViewDetails, onForkRoutine, isPickerMode, hasActiveMission, activeMissionExerciseIds = [] }) => {
+  activeMissionExerciseNames: string[];
+}> = ({ onAddExercise, onViewDetails, onForkRoutine, isPickerMode, onExitPicker, hasActiveMission, activeMissionExerciseNames }) => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState<string[]>([]);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [viewMode, setViewMode] = useState<'DATABASE' | 'PROTOCOLS'>('DATABASE');
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   
-  // Extract specific filter types
-  const selectedBodyParts = filters.filter(f => 
-    ['back', 'chest', 'cardio', 'lower arms', 'lower legs', 'neck', 'shoulders', 'upper arms', 'upper legs', 'waist'].includes(f.toLowerCase())
-  );
-  
+  // Filters
+  const [bodyParts, setBodyParts] = useState<string[]>([]);
+  const [equipments, setEquipments] = useState<string[]>([]);
+  const [exerciseTypes, setExerciseTypes] = useState<string[]>([]);
+
+  const [availBodyParts, setAvailBodyParts] = useState<string[]>([]);
+  const [availEquipments, setAvailEquipments] = useState<string[]>([]);
+  const [availExerciseTypes, setAvailExerciseTypes] = useState<string[]>([]);
+
   useEffect(() => {
-    if (viewMode === 'DATABASE') {
-      const load = async () => {
-        setLoading(true);
-        // Fetch based on first selected muscle or default to all
-        const muscleQuery = selectedBodyParts.length > 0 ? selectedBodyParts[0] : '';
-        const data = await fetchExercises(muscleQuery);
-        setExercises(data);
-        setLoading(false);
-      };
-      load();
-    }
-  }, [viewMode, JSON.stringify(selectedBodyParts)]);
+     fetchBodyParts().then(setAvailBodyParts);
+     fetchEquipments().then(setAvailEquipments);
+     fetchExerciseTypes().then(setAvailExerciseTypes);
+     searchExercises();
+  }, []);
 
-  const displayExercises = exercises;
+  useEffect(() => {
+     searchExercises();
+  }, [searchTerm, bodyParts, equipments, exerciseTypes]);
 
-  const displayRoutines = PREMADE_ROUTINES.filter(r => {
-    // Basic muscle filter
-    if (selectedBodyParts.length > 0) {
-      const hasMuscle = r.exercises.some(ex => selectedBodyParts.includes(ex.bodyPart));
-      if (!hasMuscle) return false;
-    }
-    return true;
-  });
-
-  const toggleFilter = (f: string) => {
-     if (f === 'ALL') {
-       setFilters([]);
-       return;
+  const searchExercises = async () => {
+     setLoading(true);
+     try {
+       const res = await fetchExercises(bodyParts, equipments, [], exerciseTypes, searchTerm);
+       setExercises(res.data);
+     } catch (e) {
+       console.error(e);
+     } finally {
+       setLoading(false);
      }
-     if (filters.includes(f)) setFilters(filters.filter(x => x !== f));
-     else setFilters([...filters, f]);
   };
 
   return (
-    <div className="space-y-6 pb-28">
-      <header className="flex justify-between items-end border-b border-white/10 pb-4">
-        <div>
-          <h2 className="text-3xl font-light text-white">INTEL</h2>
-          <p className="text-xs text-primary uppercase tracking-[0.2em]">Data Repository</p>
-        </div>
-      </header>
+    <div className="pb-24 space-y-4 h-full flex flex-col">
+       <div className="sticky top-0 bg-background/95 backdrop-blur-xl z-10 pb-4 border-b border-white/10 pt-2">
+          {isPickerMode && (
+             <div className="flex items-center gap-2 mb-2 text-primary">
+                <button onClick={onExitPicker}><ChevronLeft className="w-5 h-5" /></button>
+                <span className="text-xs uppercase tracking-widest">Adding to Sequence</span>
+             </div>
+          )}
+          <div className="flex gap-2">
+             <div className="relative flex-1">
+                <Search className="absolute left-3 top-3.5 w-4 h-4 text-gray-500" />
+                <Input 
+                   placeholder="SEARCH DATABASE..." 
+                   className="pl-10 !bg-white/5 border-transparent focus:border-primary"
+                   value={searchTerm}
+                   onChange={e => setSearchTerm(e.target.value)}
+                />
+             </div>
+             <button onClick={() => setFilterModalOpen(true)} className={`px-4 border ${bodyParts.length > 0 || equipments.length > 0 || exerciseTypes.length > 0 ? 'bg-primary text-black border-primary' : 'border-white/20 text-gray-400'}`}>
+                <SlidersHorizontal className="w-5 h-5" />
+             </button>
+          </div>
+       </div>
 
-      {/* View Toggle Tabs */}
-      {!isPickerMode && (
-        <div className="flex bg-white/5 p-1 rounded-lg">
-           <button 
-             onClick={() => setViewMode('DATABASE')}
-             className={`flex-1 py-2 text-xs uppercase tracking-wider rounded-md transition-all ${viewMode === 'DATABASE' ? 'bg-primary text-black font-bold' : 'text-gray-400 hover:text-white'}`}
-           >
-             Database
-           </button>
-           <button 
-             onClick={() => setViewMode('PROTOCOLS')}
-             className={`flex-1 py-2 text-xs uppercase tracking-wider rounded-md transition-all ${viewMode === 'PROTOCOLS' ? 'bg-primary text-black font-bold' : 'text-gray-400 hover:text-white'}`}
-           >
-             Protocols
-           </button>
-        </div>
-      )}
-      
-      <div className="flex gap-2">
-         <Button variant="glass" onClick={() => setShowFilterModal(true)} className="flex-1 flex justify-between items-center text-xs">
-           <span>FILTER // CONFIG</span>
-           <SlidersHorizontal className="w-4 h-4" />
-         </Button>
-      </div>
-
-      <FilterModal 
-         isOpen={showFilterModal}
-         onClose={() => setShowFilterModal(false)}
-         selectedFilters={filters}
-         onToggleFilter={toggleFilter}
-         sections={[
-           { title: "Target Sector", options: ["ALL", "back", "cardio", "chest", "lower arms", "lower legs", "neck", "shoulders", "upper arms", "upper legs", "waist"] }
-         ]}
-      />
-
-      <div className="grid grid-cols-1 gap-3">
-        {viewMode === 'DATABASE' ? (
-          loading ? (
-            <div className="text-center py-20 text-primary animate-pulse uppercase tracking-widest">Accessing Mainframe...</div>
+       <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar">
+          {loading ? (
+             <div className="text-center py-12">
+                <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
+                <p className="text-xs text-gray-500 font-mono">Accessing Archives...</p>
+             </div>
           ) : (
-            displayExercises.map((ex, idx) => {
-              const isAddedToActive = activeMissionExerciseIds.includes(ex.id);
-              return (
-                <div key={idx} className="glass-panel p-3 flex items-center gap-4 hover:bg-white/5 transition-colors group">
-                  <div 
-                     onClick={() => onViewDetails(ex)}
-                     className="w-16 h-16 bg-white cursor-pointer overflow-hidden border border-white/10 group-hover:border-primary/50 transition-all rounded-sm shrink-0"
-                  >
-                    <img src={getExerciseImage(ex)} className="w-full h-full object-cover" alt="" />
-                  </div>
-                  <div className="flex-1" onClick={() => onViewDetails(ex)}>
-                    <h4 className="text-white font-medium text-sm group-hover:text-primary transition-colors capitalize">{ex.name}</h4>
-                    <div className="flex gap-2 mt-1">
-                      <span className="text-[10px] text-gray-500 uppercase border border-white/10 px-1">{ex.bodyPart}</span>
-                    </div>
-                  </div>
-                  {/* Logic: If selecting for a specific routine (pickerMode) OR if an active mission exists */}
-                  {(hasActiveMission || isPickerMode) && (
-                    <div onClick={(e) => { e.stopPropagation(); if(!isAddedToActive) onAddExercise(ex); }}>
-                       {isAddedToActive && !isPickerMode ? (
-                          <div className="p-2 text-primary border border-primary/50 bg-primary/10 rounded">
-                             <Check className="w-4 h-4" />
-                          </div>
-                       ) : (
-                          <Button 
-                            variant="secondary" 
-                            className="!p-2 !h-auto border-white/20 hover:border-primary hover:text-primary"
+             exercises.map(ex => {
+                const isAdded = activeMissionExerciseNames.includes(ex.name);
+                return (
+                   <div key={ex.id} className="glass-panel p-4 border border-white/10 flex items-center justify-between group hover:border-white/30 transition-all">
+                      <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => onViewDetails(ex)}>
+                         <div className="w-12 h-12 bg-white/5 rounded-sm overflow-hidden bg-cover bg-center" style={{ backgroundImage: `url(${getExerciseThumbnail(ex) || getTargetImageUrl(ex.bodyPart)})` }}>
+                            {/* Placeholder if url fails */}
+                         </div>
+                         <div>
+                            <h4 className="text-sm font-bold text-white uppercase font-mono group-hover:text-primary transition-colors">{ex.name}</h4>
+                            <div className="flex gap-2 mt-1">
+                               <span className="text-[9px] px-1 border border-white/10 text-gray-400 uppercase">{ex.bodyPart}</span>
+                               <span className="text-[9px] px-1 border border-white/10 text-gray-400 uppercase">{ex.equipment}</span>
+                            </div>
+                         </div>
+                      </div>
+                      
+                      {/* Check if we should show the button at all (must be active mission OR picking) */}
+                      {(hasActiveMission || isPickerMode) && (
+                          <button 
+                             onClick={() => onAddExercise(ex)}
+                             disabled={isAdded && !isPickerMode} 
+                             className={`p-3 border ml-2 transition-all ${isAdded ? 'border-primary text-primary bg-primary/10' : 'border-white/20 text-white hover:bg-white/10'}`}
                           >
-                            <Plus className="w-4 h-4" />
-                          </Button>
-                       )}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )
-        ) : (
-          displayRoutines.length > 0 ? (
-            displayRoutines.map((routine) => (
-              <div key={routine.id} className="glass-panel p-4 border-l-2 border-l-primary/30 hover:border-l-primary transition-all">
-                 <div className="flex justify-between items-start">
-                    <div>
-                       <h3 className="text-white font-light text-lg uppercase">{routine.name}</h3>
-                       <p className="text-xs text-gray-500 mb-2">{routine.exercises.length} Exercises // {calculateEstimatedXP(routine)} XP</p>
-                    </div>
-                    <Button variant="secondary" onClick={() => onForkRoutine(routine)} className="!py-1 !px-2 text-[10px]">
-                       <Plus className="w-3 h-3 mr-1" /> Add
-                    </Button>
-                 </div>
-                 <div className="flex flex-wrap gap-2 mt-3">
-                    {routine.exercises.slice(0, 3).map(ex => (
-                      <span key={ex.id} className="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 text-gray-400">
-                        {ex.name}
-                      </span>
-                    ))}
-                    {routine.exercises.length > 3 && <span className="text-[10px] text-gray-500 self-center">...</span>}
-                 </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-10 text-gray-500 text-xs uppercase">No protocols found matching filters.</div>
-          )
-        )}
-      </div>
+                             {isAdded ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                          </button>
+                      )}
+                   </div>
+                );
+             })
+          )}
+          {!loading && exercises.length === 0 && (
+             <div className="text-center py-12 text-gray-500 font-mono text-xs">
+                No matching data found in archives.
+             </div>
+          )}
+       </div>
+
+       <FilterModal 
+          isOpen={filterModalOpen} 
+          onClose={() => setFilterModalOpen(false)} 
+          sections={[
+             { title: "Target Systems (Muscles)", options: availBodyParts },
+             { title: "Tactical Gear (Machines)", options: availEquipments },
+             { title: "Training Style", options: availExerciseTypes }
+          ]}
+          selectedFilters={[...bodyParts, ...equipments, ...exerciseTypes]}
+          onToggleFilter={(opt) => {
+             // Determine which category the option belongs to
+             if (availBodyParts.includes(opt)) setBodyParts(prev => prev.includes(opt) ? prev.filter(p => p !== opt) : [...prev, opt]);
+             else if (availEquipments.includes(opt)) setEquipments(prev => prev.includes(opt) ? prev.filter(p => p !== opt) : [...prev, opt]);
+             else if (availExerciseTypes.includes(opt)) setExerciseTypes(prev => prev.includes(opt) ? prev.filter(p => p !== opt) : [...prev, opt]);
+          }}
+       />
     </div>
   );
 };
 
-// 7. AGENT PROFILE VIEW
+// 7. AGENT VIEW (Profile) - unchanged
 const AgentView: React.FC<{ user: UserProfile; onUpdateUser: (u: UserProfile) => void }> = ({ user, onUpdateUser }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editStats, setEditStats] = useState(user.stats);
-  const [statsViewMode, setStatsViewMode] = useState<'LIST' | 'GRAPH'>('LIST');
+   const [isEditing, setIsEditing] = useState(false);
+   
+   const handleStatChange = (idx: number, newVal: number) => {
+      const newStats = [...user.stats];
+      newStats[idx].value = newVal;
+      onUpdateUser({ ...user, stats: newStats });
+   };
 
-  const handleSave = () => {
-    onUpdateUser({ ...user, stats: editStats });
-    setIsEditing(false);
-  };
+   // Simulate progress trends
+   const getTrendData = (current: number) => {
+      // Create a fake trend ending in the current value
+      return [current * 0.8, current * 0.85, current * 0.75, current * 0.9, current * 0.95, current];
+   };
 
-  const updateStat = (label: string, val: number) => {
-    setEditStats(prev => prev.map(s => s.label === label ? { ...s, value: Math.min(120, Math.max(0, val)) } : s));
-  };
+   return (
+      <div className="pb-24 space-y-8 animate-fade-in">
+         <ScreenHeader 
+           title="Agent Profile" 
+           subtitle={`ID: ${user.name}`} 
+           rightAction={
+             <button onClick={() => setIsEditing(!isEditing)} className={`p-2 rounded-full border ${isEditing ? 'bg-white text-black border-white' : 'border-white/20 text-gray-400'}`}>
+               <Settings className="w-4 h-4" />
+             </button>
+           }
+         />
 
-  return (
-    <div className="space-y-8 pb-28">
-      <header className="flex items-center gap-6 border-b border-white/10 pb-6">
-        <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary flex items-center justify-center relative overflow-hidden">
-          {user.avatarUrl ? (
-            <img src={user.avatarUrl} alt="Agent" className="w-full h-full object-cover" />
-          ) : (
-            <User className="w-8 h-8 text-primary" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent"></div>
-        </div>
-        <div className="flex-1">
-          <h2 className="text-2xl font-light text-white uppercase tracking-wider">{user.name}</h2>
-          <div className="flex items-center gap-2 mt-1">
-             <Badge variant="primary">LEVEL {user.level}</Badge>
-             <span className="text-xs text-gray-500 font-mono">OPERATIVE CLASS A</span>
-          </div>
-          <div className="mt-3">
-            <div className="flex justify-between text-[10px] text-gray-400 mb-1 uppercase tracking-widest">
-              <span>XP Progress</span>
-              <span>{user.currentXp} / {user.xpRequired}</span>
+         <div className="flex items-center gap-6">
+            <div className="w-24 h-24 rounded-full border-2 border-primary p-1 relative">
+               <div className="w-full h-full bg-gray-800 rounded-full overflow-hidden flex items-center justify-center">
+                  <User className="w-12 h-12 text-gray-500" />
+               </div>
+               <div className="absolute -bottom-2 -right-2 bg-black border border-primary px-2 py-0.5 rounded text-xs text-primary font-bold font-mono">
+                  LVL {user.level}
+               </div>
             </div>
-            <ProgressBar progress={(user.currentXp / user.xpRequired) * 100} />
-          </div>
-        </div>
-        <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} className="p-2 border border-white/20 text-gray-400 hover:text-white">
-          {isEditing ? <Save className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
-        </button>
-      </header>
+            <div>
+               <h2 className="text-2xl font-bold text-white uppercase font-mono">{user.name}</h2>
+               <p className="text-xs text-gray-400 font-mono uppercase tracking-widest">{user.goal} Specialist</p>
+               <div className="mt-3 w-32">
+                  <div className="flex justify-between text-[9px] text-gray-500 mb-1 font-mono">
+                     <span>XP</span>
+                     <span>{user.currentXp} / {user.xpRequired}</span>
+                  </div>
+                  <ProgressBar progress={(user.currentXp / user.xpRequired) * 100} className="h-1" />
+               </div>
+            </div>
+         </div>
 
-      <div className="flex justify-end gap-2">
-         <button 
-           onClick={() => setStatsViewMode('LIST')}
-           className={`p-2 rounded ${statsViewMode === 'LIST' ? 'bg-primary text-black' : 'bg-white/5 text-gray-400'}`}
-         >
-            <List className="w-4 h-4" />
-         </button>
-         <button 
-           onClick={() => setStatsViewMode('GRAPH')}
-           className={`p-2 rounded ${statsViewMode === 'GRAPH' ? 'bg-primary text-black' : 'bg-white/5 text-gray-400'}`}
-         >
-            <BarChart3 className="w-4 h-4" />
-         </button>
-      </div>
+         <div className="glass-panel p-4 border border-white/10 relative overflow-hidden">
+            <div className="absolute top-2 right-2 text-primary opacity-50"><Crosshair className="w-6 h-6" /></div>
+            <h3 className="text-sm font-mono uppercase tracking-widest text-white mb-4">Biometric Balance</h3>
+            <RadarChart data={user.stats} />
+         </div>
 
-      <div className="glass-panel p-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-2 opacity-10">
-           <Activity className="w-32 h-32" />
-        </div>
-        <h3 className="text-sm text-gray-400 uppercase tracking-[0.2em] mb-6">Biometric Balance</h3>
-        
-        {/* Render based on View Mode */}
-        {statsViewMode === 'GRAPH' ? (
-           <div className="animate-fade-in">
-             <RadarChart data={isEditing ? editStats : user.stats} />
-           </div>
-        ) : (
-           <div className="space-y-6 animate-fade-in">
-              {(isEditing ? editStats : user.stats).map(stat => (
-                <div key={stat.label} className="space-y-2">
-                   <div className="flex justify-between text-xs uppercase text-gray-300">
-                      <span>{stat.label}</span>
-                      <span className="font-mono text-primary">{stat.value}</span>
-                   </div>
-                   {isEditing ? (
-                      <div className="flex items-center gap-4">
-                        <input 
-                            type="range" 
-                            min="0" 
-                            max="120" 
-                            value={stat.value} 
-                            onChange={(e) => updateStat(stat.label, parseInt(e.target.value))}
-                            className="flex-1 accent-primary h-1 bg-gray-800 appearance-none cursor-pointer"
-                        />
-                      </div>
-                   ) : (
-                      <div className="w-full h-1 bg-gray-800">
-                        <div className="h-full bg-primary" style={{ width: `${(stat.value / stat.fullMark) * 100}%` }}></div>
-                      </div>
-                   )}
-                </div>
-              ))}
-           </div>
-        )}
-      </div>
-
-      {/* Performance Trends - Only in Graph Mode */}
-      {!isEditing && statsViewMode === 'GRAPH' && (
-        <div className="space-y-6 animate-fade-in">
-           <h3 className="text-sm text-gray-400 uppercase tracking-[0.2em]">Performance Trends</h3>
-           <div className="grid grid-cols-1 gap-6">
-             {user.stats.map(stat => (
-                <div key={stat.label} className="glass-panel p-4">
-                    <div className="flex justify-between items-center mb-4">
-                       <span className="text-xs uppercase text-white font-bold">{stat.label}</span>
-                       <span className="text-[10px] text-gray-500 font-mono">CURRENT: <span className="text-primary text-sm font-bold">{stat.value}</span></span>
+         <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+               <h3 className="text-sm font-mono uppercase tracking-widest text-white">{isEditing ? 'Biometric Calibration' : 'Performance Trends'}</h3>
+            </div>
+            
+            {isEditing ? (
+               <div className="space-y-6">
+                  {user.stats.map((stat, idx) => (
+                    <div key={stat.label}>
+                       <div className="flex justify-between text-xs font-mono uppercase mb-2 text-gray-400">
+                          <span>{stat.label}</span>
+                          <span className="text-primary">{stat.value} / {stat.fullMark}</span>
+                       </div>
+                       <input 
+                         type="range" 
+                         min="0" 
+                         max="120" 
+                         value={stat.value} 
+                         onChange={(e) => handleStatChange(idx, parseInt(e.target.value))}
+                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                       />
                     </div>
-                    {/* Generating dummy trend data based on current value */}
-                    <SimpleChart 
-                        data={[...Array(10)].map((_, i) => {
-                           if (i === 9) return stat.value; // Ensure last point is current
-                           return Math.max(0, stat.value - (9-i)*2 + Math.random()*10 - 5)
-                        })} 
-                        labels={[]} 
-                    />
-                </div>
-             ))}
-           </div>
-        </div>
-      )}
-    </div>
-  );
+                  ))}
+               </div>
+            ) : (
+               <div className="grid grid-cols-1 gap-6">
+                  {user.stats.map((stat) => (
+                    <div key={stat.label} className="bg-white/5 p-4 border border-white/5">
+                        <div className="flex justify-between items-end mb-2">
+                           <span className="text-[10px] text-gray-500 uppercase tracking-widest font-mono">{stat.label}</span>
+                           <span className="text-lg text-white font-mono">{stat.value}</span>
+                        </div>
+                        <SimpleChart data={getTrendData(stat.value)} labels={['', '', '', '', '', 'NOW']} />
+                    </div>
+                  ))}
+               </div>
+            )}
+         </div>
+
+         <div className="space-y-4 pt-4 border-t border-white/10">
+            <h3 className="text-sm font-mono uppercase tracking-widest text-white border-b border-white/10 pb-2">Service Record</h3>
+            <div className="grid grid-cols-2 gap-4">
+               <div className="bg-white/5 p-4 border border-white/5">
+                  <div className="text-[10px] text-gray-500 uppercase tracking-widest">Experience</div>
+                  <div className="text-lg text-white font-mono">{user.experience}</div>
+               </div>
+               <div className="bg-white/5 p-4 border border-white/5">
+                  <div className="text-[10px] text-gray-500 uppercase tracking-widest">Joined</div>
+                  <div className="text-lg text-white font-mono">2024</div>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
 };
 
 // 8. LOGS VIEW
 const LogsView: React.FC<{ logs: WorkoutLog[] }> = ({ logs }) => {
-  const [search, setSearch] = useState('');
-  const [selectedLog, setSelectedLog] = useState<WorkoutLog | null>(null);
-  const [filters, setFilters] = useState<string[]>([]);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+   const [selectedLog, setSelectedLog] = useState<WorkoutLog | null>(null);
 
-  // Generate last 14 days
-  const last14Days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (13 - i));
-    return d.toISOString().split('T')[0];
-  });
+   // Generate last 14 days calendar
+   const last14Days = Array.from({length: 14}).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (13 - i));
+      const dateStr = d.toISOString().split('T')[0];
+      const hasLog = logs.some(l => l.date.startsWith(dateStr));
+      return { day: d.getDate().toString(), active: hasLog };
+   });
 
-  const calendarDays = last14Days.map(dateStr => {
-     const dayLogs = logs.filter(l => l.date.startsWith(dateStr));
-     return {
-        day: dateStr.split('-')[2],
-        fullDate: dateStr,
-        active: dayLogs.some(l => l.status === 'COMPLETED'),
-        hasLog: dayLogs.length > 0
-     };
-  });
-
-  const toggleFilter = (f: string) => {
-    if (f === 'ALL') {
-      setFilters([]);
-      return;
-    }
-    if (filters.includes(f)) setFilters(filters.filter(x => x !== f));
-    else setFilters([...filters, f]);
-  };
-
-  const filteredLogs = logs.filter(log => {
-     const matchesSearch = log.routineName.toLowerCase().includes(search.toLowerCase());
-     const matchesStatus = filters.length > 0 ? filters.includes(log.status) : true;
-     const matchesDate = selectedDate ? log.date.startsWith(selectedDate) : true;
-     return matchesSearch && matchesStatus && matchesDate;
-  });
-
-  return (
-    <div className="space-y-6 pb-28">
-      <header className="flex justify-between items-end border-b border-white/10 pb-4">
-        <div>
-          <h2 className="text-3xl font-light text-white">LOGS</h2>
-          <p className="text-xs text-primary uppercase tracking-[0.2em]">Mission History</p>
-        </div>
-      </header>
-
-      {/* 14 Day Calendar */}
-      <div className="glass-panel p-4">
-         <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xs text-gray-400 uppercase tracking-widest">Cycle Activity</h3>
-            {selectedDate && (
-               <button onClick={() => setSelectedDate(null)} className="text-[10px] text-primary hover:underline">
-                  Reset View
-               </button>
-            )}
+   return (
+      <div className="pb-24 space-y-6 h-full flex flex-col">
+         <ScreenHeader title="Mission Logs" subtitle="History & Analytics" />
+         
+         <div className="p-4 bg-white/5 border border-white/10 rounded-sm">
+             <h4 className="text-[10px] uppercase tracking-widest text-gray-500 mb-3 font-mono">Cycle Activity (14 Days)</h4>
+             <CalendarGrid days={last14Days} />
          </div>
-         <div className="grid grid-cols-7 gap-2">
-            {calendarDays.map((d, i) => (
-              <button 
-                 key={i} 
-                 onClick={() => setSelectedDate(d.fullDate)}
-                 className={`
-                    flex flex-col items-center gap-1 p-1 rounded transition-all
-                    ${selectedDate === d.fullDate ? 'bg-white/10 ring-1 ring-primary' : 'hover:bg-white/5'}
-                 `}
-              >
-                <div className={`
-                   w-8 h-8 rounded-full flex items-center justify-center text-xs border 
-                   ${d.active 
-                      ? 'bg-primary text-black border-primary font-bold shadow-[0_0_10px_rgba(0,255,255,0.4)]' 
-                      : d.hasLog ? 'border-yellow-500 text-yellow-500' : 'border-white/10 text-gray-500'}
-                `}>
-                  {d.day}
-                </div>
-              </button>
-            ))}
-         </div>
-      </div>
 
-      {/* Search & Filter */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3.5 w-4 h-4 text-gray-500" />
-          <Input 
-            placeholder="Search logs..." 
-            className="pl-10"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <button 
-           onClick={() => setShowFilterModal(true)}
-           className={`px-4 flex items-center gap-2 border ${filters.length > 0 ? 'bg-primary text-black border-primary' : 'bg-surfaceHighlight border-white/20 text-gray-400 hover:text-white'} transition-colors`}
-        >
-           <SlidersHorizontal className="w-4 h-4" />
-        </button>
-      </div>
-
-      <FilterModal 
-        isOpen={showFilterModal} 
-        onClose={() => setShowFilterModal(false)}
-        selectedFilters={filters}
-        onToggleFilter={toggleFilter}
-        sections={[
-          { title: "Mission Status", options: ["ALL", "COMPLETED", "INCOMPLETE", "ABORTED"] }
-        ]}
-      />
-
-      <div className="space-y-3">
-        {filteredLogs.map(log => (
-          <div 
-             key={log.id} 
-             onClick={() => setSelectedLog(log)}
-             className="glass-panel p-4 flex items-center justify-between hover:border-primary/50 cursor-pointer transition-colors"
-          >
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                 <h4 className="text-white font-medium">{log.routineName}</h4>
-                 <StatusBadge status={log.status} />
-              </div>
-              <p className="text-xs text-gray-500 font-mono">
-                 {new Date(log.date).toLocaleDateString()} // {formatDuration(log.duration * 60000)}
-              </p>
+         {logs.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 space-y-4 opacity-50">
+               <FileBadge className="w-16 h-16 stroke-1" />
+               <p className="font-mono text-xs uppercase tracking-widest">No mission data recorded.</p>
             </div>
-            <div className="text-right">
-               <span className="block text-primary font-mono font-bold text-sm">+{log.xpEarned} XP</span>
-               <span className="text-[10px] text-gray-600 uppercase">{log.totalVolume} KG VOL</span>
+         ) : (
+            <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar">
+               {logs.map(log => (
+                  <div key={log.id} onClick={() => setSelectedLog(log)} className="glass-panel p-4 border border-white/10 space-y-3 cursor-pointer hover:bg-white/5 transition-colors group">
+                     <div className="flex justify-between items-start">
+                        <div>
+                           <div className="text-[10px] text-gray-500 font-mono uppercase mb-1">{new Date(log.date).toLocaleDateString()} • {new Date(log.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                           <h4 className="text-white font-bold font-mono uppercase group-hover:text-primary transition-colors">{log.routineName}</h4>
+                        </div>
+                        <StatusBadge status={log.status} />
+                     </div>
+                     
+                     <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-3">
+                        <div>
+                           <div className="text-[9px] text-gray-500 uppercase">Duration</div>
+                           <div className="text-sm text-white font-mono">{log.duration} MIN</div>
+                        </div>
+                        <div>
+                           <div className="text-[9px] text-gray-500 uppercase">Volume</div>
+                           <div className="text-sm text-white font-mono">{(log.totalVolume / 1000).toFixed(1)}k KG</div>
+                        </div>
+                        <div>
+                           <div className="text-[9px] text-gray-500 uppercase">XP</div>
+                           <div className="text-sm text-primary font-mono">+{log.xpEarned}</div>
+                        </div>
+                     </div>
+                  </div>
+               ))}
             </div>
-          </div>
-        ))}
-        {filteredLogs.length === 0 && (
-           <div className="text-center py-8 text-gray-600 text-xs uppercase tracking-widest border border-dashed border-white/10 rounded">
-              No records found
-           </div>
-        )}
+         )}
+         <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
       </div>
-
-      {/* Detail Modal */}
-      {selectedLog && (
-         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedLog(null)}>
-            <div className="w-full max-w-lg glass-panel p-6 space-y-6 relative border border-primary/20" onClick={e => e.stopPropagation()}>
-               <button onClick={() => setSelectedLog(null)} className="absolute top-4 right-4 text-gray-400"><X className="w-5 h-5"/></button>
-               
-               <div className="border-b border-white/10 pb-4">
-                  <Badge variant="outline" className="mb-2">{new Date(selectedLog.date).toLocaleString()}</Badge>
-                  <h3 className="text-2xl text-white uppercase">{selectedLog.routineName}</h3>
-                  <div className="flex gap-2 mt-2">
-                     <StatusBadge status={selectedLog.status} />
-                     <Badge variant="primary">+{selectedLog.xpEarned} XP</Badge>
-                  </div>
-               </div>
-
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white/5 p-3 rounded">
-                     <p className="text-[10px] text-gray-500 uppercase">Duration</p>
-                     <p className="text-xl font-mono text-white">{selectedLog.duration} min</p>
-                  </div>
-                  <div className="bg-white/5 p-3 rounded">
-                     <p className="text-[10px] text-gray-500 uppercase">Volume</p>
-                     <p className="text-xl font-mono text-white">{selectedLog.totalVolume} kg</p>
-                  </div>
-               </div>
-
-               <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
-                  <p className="text-xs text-primary uppercase border-b border-primary/20 pb-1">Exercise Report</p>
-                  {selectedLog.exercises && selectedLog.exercises.length > 0 ? (
-                     selectedLog.exercises.map((ex, i) => {
-                        const completed = ex.setLogs.filter(s => s.completed).length;
-                        return (
-                           <div key={i} className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
-                              <span className="text-gray-300">{ex.name}</span>
-                              <span className={`font-mono ${completed === ex.targetSets ? 'text-green-500' : 'text-yellow-500'}`}>
-                                 {completed}/{ex.targetSets} Sets
-                              </span>
-                           </div>
-                        )
-                     })
-                  ) : (
-                     <p className="text-xs text-gray-600 italic">Detailed log data unavailable for this mission.</p>
-                  )}
-               </div>
-            </div>
-         </div>
-      )}
-    </div>
-  );
+   );
 };
-
-// --- Main App Component ---
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('LOGIN');
+  // ... state declarations ...
   const [user, setUser] = useState<UserProfile>({
     name: 'Operative',
     email: 'user@solotrain.com',
@@ -1184,7 +1160,8 @@ const App: React.FC = () => {
       { label: 'Legs', value: 80, fullMark: 120 },
       { label: 'Arms', value: 60, fullMark: 120 },
       { label: 'Core', value: 50, fullMark: 120 },
-    ]
+    ],
+    onboardingComplete: false
   });
 
   const [routines, setRoutines] = useState<Routine[]>(PREMADE_ROUTINES);
@@ -1192,306 +1169,247 @@ const App: React.FC = () => {
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutLog[]>(DUMMY_LOGS);
   
-  // Modal State for adding exercises
   const [selectedExerciseForDetail, setSelectedExerciseForDetail] = useState<Exercise | null>(null);
   const [pickerContext, setPickerContext] = useState<'ROUTINE' | 'ACTIVE_SESSION' | null>(null);
 
-  // Derived state for Active Mission notification
   const activeMission = routines.find(r => r.isFavorite);
   const hasActiveMission = !!activeMission;
-  const activeMissionExerciseIds = activeMission ? activeMission.exercises.map(ex => ex.id) : [];
+  
+  // FIXED LOGIC: Prioritize Picker Context (Editing Routine) over Active Mission for checkmarks
+  const activeMissionExerciseNames = (pickerContext === 'ROUTINE' && selectedRoutine)
+    ? selectedRoutine.exercises.map(ex => ex.name)
+    : (activeMission ? activeMission.exercises.map(ex => ex.name) : []);
 
-  // --- Logic ---
+  const handleLogin = () => {
+    if (!user.onboardingComplete) setView('SETUP');
+    else setView('DASHBOARD');
+  };
 
-  const handleLogin = () => setView('DASHBOARD');
+  const generateProtocols = async (goal: string, experience: string): Promise<Routine[]> => {
+     const { data: allExercises } = await fetchExercises([], [], [], [], '', 1, 100);
+     const generated: Routine[] = [];
+     const toRoutineEx = (ex: Exercise, sets: number, reps: string, weight: string): RoutineExercise => ({
+        ...ex,
+        id: `gen_ex_${ex.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        targetSets: sets,
+        targetReps: reps,
+        targetWeight: weight,
+        setLogs: []
+     });
+     const findEx = (parts: string[], equipments?: string[]) => {
+        return allExercises.filter(ex => {
+            const partMatch = parts.some(p => ex.bodyPart.toLowerCase().includes(p) || ex.target.toLowerCase().includes(p));
+            const equipMatch = equipments ? equipments.some(e => ex.equipment.toLowerCase().includes(e)) : true;
+            return partMatch && equipMatch;
+        });
+     };
+     const isBeginner = experience === 'BEGINNER';
+     const sets = isBeginner ? 3 : 4;
+     const weight = isBeginner ? '20' : '50';
 
-  const startRoutine = (routine: Routine) => {
-    // Initialize set logs for tracking
-    const preparedExercises = routine.exercises.map(ex => ({
-      ...ex,
-      setLogs: Array.from({ length: ex.targetSets }).map((_, i) => ({
-        id: `set_${Date.now()}_${i}`,
-        weight: ex.targetWeight,
-        reps: ex.targetReps,
-        completed: false
-      }))
-    }));
+     if (goal === 'STRENGTH') {
+        const pushEx = findEx(['chest', 'shoulders', 'triceps'], ['barbell', 'dumbbell']);
+        const squatEx = findEx(['upper legs', 'quads'], ['barbell']);
+        generated.push({
+           id: `gen_str_1_${Date.now()}`,
+           name: 'ALPHA PROTOCOL [PUSH]',
+           description: 'Strength foundation. Focus on compound pressing movements.',
+           isFavorite: true,
+           exercises: [...(squatEx[0] ? [toRoutineEx(squatEx[0], 5, '5', weight)] : []), ...(pushEx.slice(0, 3).map(ex => toRoutineEx(ex, 5, '5', weight)))]
+        });
+        const pullEx = findEx(['back', 'lats', 'biceps'], ['barbell', 'cable', 'dumbbell']);
+        const deadliftEx = findEx(['back', 'legs'], ['barbell']);
+        generated.push({
+           id: `gen_str_2_${Date.now()}`,
+           name: 'BRAVO PROTOCOL [PULL]',
+           description: 'Posterior chain dominance. Heavy pulls.',
+           isFavorite: false,
+           exercises: [...(deadliftEx[0] ? [toRoutineEx(deadliftEx[0], 5, '3', weight)] : []), ...(pullEx.slice(0, 3).map(ex => toRoutineEx(ex, 4, '6', weight)))]
+        });
+         const legEx = findEx(['legs', 'calves', 'glutes']);
+         generated.push({ id: `gen_str_3_${Date.now()}`, name: 'CHARLIE PROTOCOL [LOWER]', description: 'Lower body output maximization.', isFavorite: false, exercises: legEx.slice(0, 4).map(ex => toRoutineEx(ex, 4, '8', weight)) });
+     } else if (goal === 'HYPERTROPHY') {
+        const reps = '10-12';
+        const upperEx = findEx(['chest', 'back', 'shoulders']);
+        generated.push({ id: `gen_hyp_1_${Date.now()}`, name: 'UPPER BODY SCULPT', description: 'Volume training for upper torso metrics.', isFavorite: true, exercises: upperEx.slice(0, 6).map(ex => toRoutineEx(ex, 4, reps, weight)) });
+        const lowerEx = findEx(['legs', 'calves', 'glutes']);
+        generated.push({ id: `gen_hyp_2_${Date.now()}`, name: 'LOWER BODY FOUNDATION', description: 'Leg development protocol.', isFavorite: false, exercises: lowerEx.slice(0, 5).map(ex => toRoutineEx(ex, 4, reps, weight)) });
+        const armsEx = findEx(['biceps', 'triceps', 'forearms']);
+        generated.push({ id: `gen_hyp_3_${Date.now()}`, name: 'ARMORY [ARMS]', description: 'Isolation work for arm appendages.', isFavorite: false, exercises: armsEx.slice(0, 5).map(ex => toRoutineEx(ex, 3, '15', weight)) });
+        const coreEx = findEx(['abs', 'waist']);
+        generated.push({ id: `gen_hyp_4_${Date.now()}`, name: 'CORE STABILITY', description: 'Midsection structural integrity.', isFavorite: false, exercises: coreEx.slice(0, 4).map(ex => toRoutineEx(ex, 3, '20', '0')) });
+     } else {
+        const reps = '15-20';
+        const lightWeight = isBeginner ? '10' : '30';
+        const circuitA = allExercises.slice(0, 6);
+        generated.push({ id: `gen_end_1_${Date.now()}`, name: 'CIRCUIT ALPHA', description: 'High repetition metabolic conditioning.', isFavorite: true, exercises: circuitA.map(ex => toRoutineEx(ex, 3, reps, lightWeight)) });
+        const circuitB = allExercises.slice(6, 12);
+        generated.push({ id: `gen_end_2_${Date.now()}`, name: 'CIRCUIT BRAVO', description: 'Secondary metabolic pathway training.', isFavorite: false, exercises: circuitB.map(ex => toRoutineEx(ex, 3, reps, lightWeight)) });
+        const fullBody = findEx(['legs', 'back', 'chest', 'cardio']);
+        generated.push({ id: `gen_end_3_${Date.now()}`, name: 'FULL BODY CONDITIONING', description: 'Total system endurance test.', isFavorite: false, exercises: fullBody.slice(0, 5).map(ex => toRoutineEx(ex, 3, '20', lightWeight)) });
+     }
+     return generated;
+  };
 
-    setActiveSession({
-      id: `session_${Date.now()}`,
-      routineId: routine.id,
-      routineName: routine.name,
-      startTime: Date.now(),
-      exercises: preparedExercises
-    });
+  const handleFinishSetup = async (data: SetupData) => {
+    const updatedUser = { ...user, name: data.codename, experience: data.experience, goal: data.goal, onboardingComplete: true };
+    try {
+        const generatedRoutines = await generateProtocols(data.goal, data.experience);
+        if (generatedRoutines.length === 0 || generatedRoutines[0].exercises.length === 0) {
+           const fallbackEx: RoutineExercise = { id: 'fallback_1', name: 'Burpees', bodyPart: 'cardio', muscle: 'cardio', equipment: 'body weight', target: 'cardiovascular system', secondaryMuscles: ['legs', 'chest'], gifUrl: '', instructions: ['Perform a squat thrust with an additional stand between reps.'], targetSets: 3, targetReps: '10', targetWeight: '0', setLogs: [] };
+           generatedRoutines.push({ id: 'fallback_routine', name: 'EMERGENCY PROTOCOL', description: 'Database unavailable. Standard issue PT.', isFavorite: true, exercises: [fallbackEx] });
+        }
+        setRoutines([...routines, ...generatedRoutines]);
+    } catch (e) { console.error("Failed to generate protocols", e); }
+    setUser(updatedUser);
+    setView('DASHBOARD');
+  };
+
+  const handleStartWorkout = (routine: Routine) => {
+    const preparedExercises = routine.exercises.map(ex => ({ ...ex, setLogs: Array.from({ length: ex.targetSets }).map((_, i) => ({ id: `set_${Date.now()}_${i}`, weight: ex.targetWeight, reps: ex.targetReps, completed: false })) }));
+    setActiveSession({ id: `session_${Date.now()}`, routineId: routine.id, routineName: routine.name, startTime: Date.now(), exercises: preparedExercises });
     setView('WORKOUT');
   };
 
-  const finishWorkout = (session: WorkoutSession) => {
-    const endTime = Date.now();
-    const duration = Math.round((endTime - session.startTime) / 60000); // mins
+  const handleUpdateSession = (session: WorkoutSession) => { setActiveSession(session); };
+  const handleFinishWorkout = (session: WorkoutSession) => {
     const xp = calculateXP(session.exercises);
-    
-    // Check status
-    const totalSets = session.exercises.reduce((acc, ex) => acc + ex.targetSets, 0);
     const completedSets = session.exercises.reduce((acc, ex) => acc + ex.setLogs.filter(s => s.completed).length, 0);
-    const status: LogStatus = completedSets === totalSets ? 'COMPLETED' : 'INCOMPLETE';
-
-    const log: WorkoutLog = {
-      id: session.id,
-      routineName: session.routineName,
-      date: new Date().toISOString(),
-      duration,
-      xpEarned: xp,
-      exercisesCompleted: session.exercises.filter(ex => ex.setLogs.every(s => s.completed)).length,
-      totalVolume: session.exercises.reduce((acc, ex) => {
-         return acc + ex.setLogs.reduce((sAcc, s) => s.completed ? sAcc + (parseInt(s.weight) || 0) * (parseInt(s.reps) || 0) : sAcc, 0);
-      }, 0),
-      status,
-      exercises: session.exercises
-    };
-
+    const totalSets = session.exercises.reduce((acc, ex) => acc + ex.targetSets, 0);
+    const duration = (Date.now() - session.startTime) / 60000;
+    let status: LogStatus = 'COMPLETED';
+    if (completedSets < totalSets) status = 'INCOMPLETE';
+    const log: WorkoutLog = { id: session.id, routineName: session.routineName, date: new Date(session.startTime).toISOString(), duration: Math.round(duration), xpEarned: xp, exercisesCompleted: session.exercises.length, totalVolume: session.exercises.reduce((acc, ex) => acc + ex.setLogs.reduce((sAcc, s) => s.completed ? sAcc + (parseInt(s.weight) * parseInt(s.reps) || 0) : sAcc, 0), 0), status: status, exercises: session.exercises };
     setWorkoutHistory([log, ...workoutHistory]);
-    
-    // Level Up Logic
-    let newXp = user.currentXp + xp;
-    let newLevel = user.level;
-    let newReq = user.xpRequired;
-
-    while (newXp >= newReq) {
-       newXp -= newReq;
-       newLevel += 1;
-       newReq = Math.floor(newReq * 1.2);
-    }
-
-    setUser({ ...user, level: newLevel, currentXp: newXp, xpRequired: newReq });
-
-    // Update last performed
+    const newXp = user.currentXp + xp;
+    if (newXp >= user.xpRequired) { setUser({ ...user, level: user.level + 1, currentXp: newXp - user.xpRequired, xpRequired: Math.round(user.xpRequired * 1.2) }); } else { setUser({ ...user, currentXp: newXp }); }
     setRoutines(prev => prev.map(r => r.id === session.routineId ? { ...r, lastPerformed: new Date().toLocaleDateString() } : r));
-
     setActiveSession(null);
     setView('LOGS');
   };
-
-  const abortWorkout = (session: WorkoutSession) => {
-     // Save as aborted log
-     const duration = Math.round((Date.now() - session.startTime) / 60000);
-     const log: WorkoutLog = {
-        id: session.id,
-        routineName: session.routineName,
-        date: new Date().toISOString(),
-        duration,
-        xpEarned: 0,
-        exercisesCompleted: 0,
-        totalVolume: 0,
-        status: 'ABORTED',
-        exercises: session.exercises
-     };
-     setWorkoutHistory([log, ...workoutHistory]);
-     setActiveSession(null);
-     setView('DASHBOARD');
+  const handleAbortWorkout = (session: WorkoutSession) => {
+     const duration = (Date.now() - session.startTime) / 60000;
+     const log: WorkoutLog = { id: session.id, routineName: session.routineName, date: new Date(session.startTime).toISOString(), duration: Math.round(duration), xpEarned: 0, exercisesCompleted: 0, totalVolume: 0, status: 'ABORTED', exercises: session.exercises };
+    setWorkoutHistory([log, ...workoutHistory]);
+    setActiveSession(null);
+    setView('DASHBOARD');
   };
-
-  const saveRoutine = (updatedRoutine: Routine) => {
-    // If setting as favorite (active), unset others
-    if (updatedRoutine.isFavorite) {
-       setRoutines(prev => prev.map(r => r.id === updatedRoutine.id ? updatedRoutine : { ...r, isFavorite: false }));
-    } else {
-       setRoutines(prev => prev.map(r => r.id === updatedRoutine.id ? updatedRoutine : r));
-    }
-    
-    if (selectedRoutine && selectedRoutine.id === updatedRoutine.id) {
-       setSelectedRoutine(updatedRoutine);
+  const handleAddExercise = (exercise: Exercise) => {
+    const routineExercise: RoutineExercise = { ...exercise, id: `routine_ex_${Date.now()}`, targetSets: 3, targetReps: '10', targetWeight: '20', setLogs: [] };
+    if (pickerContext === 'ROUTINE' && selectedRoutine) {
+      const updated = { ...selectedRoutine, exercises: [...selectedRoutine.exercises, routineExercise] };
+      setSelectedRoutine(updated);
+      setRoutines(prev => prev.map(r => r.id === updated.id ? updated : r));
+    } else if (pickerContext === 'ACTIVE_SESSION' && activeSession) {
+       const withLogs = { ...routineExercise, setLogs: Array.from({ length: 3 }).map((_, i) => ({ id: `set_${Date.now()}_${i}`, weight: '20', reps: '10', completed: false })) };
+       setActiveSession({ ...activeSession, exercises: [...activeSession.exercises, withLogs] });
     }
   };
-
-  const createRoutine = () => {
-    const newRoutine: Routine = {
-      id: `custom_${Date.now()}`,
-      name: 'New Protocol',
-      description: '',
-      exercises: [],
-      isFavorite: false
-    };
-    setRoutines([...routines, newRoutine]);
-    setSelectedRoutine(newRoutine);
-    setView('ROUTINE_DETAIL');
-  };
-
-  const forkRoutine = (source: Routine) => {
-    const newRoutine: Routine = {
-      ...source,
-      id: `fork_${Date.now()}`,
-      name: `${source.name} (Variant)`,
-      isFavorite: false,
-      lastPerformed: undefined
-    };
-    setRoutines([...routines, newRoutine]);
-    setSelectedRoutine(newRoutine);
-    setView('ROUTINE_DETAIL');
-  };
-
-  const handleAddExerciseToRoutine = (exercise: Exercise) => {
-    if (!selectedRoutine) return;
-    const newEx: RoutineExercise = {
-      ...exercise,
-      id: exercise.id, // Keep original ID to check duplications or map status easily
-      targetSets: 3,
-      targetReps: '10',
-      targetWeight: '20',
-      setLogs: []
-    };
-    const updated = { ...selectedRoutine, exercises: [...selectedRoutine.exercises, newEx] };
-    saveRoutine(updated);
-  };
-
   const handleAddExerciseToActiveMission = (exercise: Exercise) => {
-     const activeRoutine = routines.find(r => r.isFavorite);
-     if (activeRoutine) {
-        // Prevent duplicate IDs if logic requires unique entries, but typically for routines we might want multiple. 
-        // Here we just add it.
-        const newEx: RoutineExercise = {
-           ...exercise,
-           id: exercise.id,
-           targetSets: 3,
-           targetReps: '10',
-           targetWeight: '20',
-           setLogs: []
-        };
-        const updated = { ...activeRoutine, exercises: [...activeRoutine.exercises, newEx] };
-        saveRoutine(updated);
-        // Alert removed for seamless UX, state update will toggle checkmark
-     } else {
-        alert("No Active Mission designated. Please select an 'Active' mission in dashboard.");
-     }
+     if (!activeMission) return;
+     const routineExercise: RoutineExercise = { ...exercise, id: `routine_ex_${Date.now()}`, targetSets: 3, targetReps: '10', targetWeight: '20', setLogs: [] };
+     const updated = { ...activeMission, exercises: [...activeMission.exercises, routineExercise] };
+     setRoutines(prev => prev.map(r => r.id === updated.id ? updated : r));
   };
+  const openExploreForRoutine = () => { setPickerContext('ROUTINE'); setView('EXPLORE'); };
+  const exitPicker = () => { setPickerContext(null); if (selectedRoutine) setView('ROUTINE_DETAIL'); else setView('DASHBOARD'); };
 
-  // Render Content
-  const renderView = () => {
-    switch (view) {
-      case 'LOGIN': return <LoginView onLogin={handleLogin} />;
-      case 'DASHBOARD': 
-        return <DashboardView 
-                  user={user} 
-                  routines={routines} 
-                  onSelectRoutine={(r) => { setSelectedRoutine(r); setView('ROUTINE_DETAIL'); }} 
-                  onCreateRoutine={createRoutine}
-                  onForkRoutine={forkRoutine}
-               />;
-      case 'ROUTINE_DETAIL':
-        return selectedRoutine ? (
-          <RoutineDetailView 
-            routine={selectedRoutine} 
-            onBack={() => setView('DASHBOARD')}
-            onStart={startRoutine}
-            onSave={saveRoutine}
-            onDelete={() => {}}
-            onAddExercises={() => { setPickerContext('ROUTINE'); setView('EXPLORE'); }}
-          />
-        ) : null;
-      case 'WORKOUT':
-        return activeSession ? (
-           <WorkoutView 
-              session={activeSession} 
-              onFinish={finishWorkout} 
-              onAbort={abortWorkout}
-              onUpdateSession={setActiveSession}
-              onViewDetails={(ex) => setSelectedExerciseForDetail(ex)}
-           />
-        ) : null;
-      case 'EXPLORE':
-        return <ExploreView 
-                  isPickerMode={!!pickerContext}
-                  hasActiveMission={hasActiveMission}
-                  activeMissionExerciseIds={activeMissionExerciseIds}
-                  onViewDetails={(ex) => setSelectedExerciseForDetail(ex)}
-                  onForkRoutine={(r) => {
-                    forkRoutine(r);
-                    alert(`Forked protocol: ${r.name}`);
-                  }}
-                  onAddExercise={(ex) => {
-                     if (pickerContext === 'ROUTINE') {
-                        handleAddExerciseToRoutine(ex);
-                        setView('ROUTINE_DETAIL');
-                        setPickerContext(null);
-                     } else {
-                        handleAddExerciseToActiveMission(ex);
-                     }
-                  }}
-               />;
-      case 'PROFILE':
-        return <AgentView user={user} onUpdateUser={setUser} />;
-      case 'LOGS':
-        return <LogsView logs={workoutHistory} />;
-      default: return null;
-    }
-  };
-
-  // Nav Bar
   if (view === 'LOGIN') return <LoginView onLogin={handleLogin} />;
+  if (view === 'SETUP') return <OnboardingView onComplete={handleFinishSetup} />;
 
   return (
     <div className="min-h-screen bg-background text-white font-sans selection:bg-primary selection:text-black">
-      {/* Background Grid */}
-      <div className="fixed inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none z-0"></div>
-      
-      <main className="relative z-10 p-6 pb-28 min-h-screen max-w-md mx-auto">
-        {renderView()}
-      </main>
+      <div className="max-w-md mx-auto min-h-screen relative shadow-2xl bg-black">
+        
+        <main className="p-6 pt-8 h-full">
+          {view === 'DASHBOARD' && (
+            <DashboardView 
+              user={user} 
+              routines={routines} 
+              onSelectRoutine={(r) => { setSelectedRoutine(r); setView('ROUTINE_DETAIL'); }}
+              onCreateRoutine={() => { const newRoutine = { id: `routine_${Date.now()}`, name: 'NEW PROTOCOL', description: '', exercises: [] }; setRoutines([...routines, newRoutine]); setSelectedRoutine(newRoutine); setView('ROUTINE_DETAIL'); }}
+              onForkRoutine={(r) => { const newRoutine = { ...r, id: `fork_${Date.now()}`, name: `${r.name} (COPY)`, isFavorite: false }; setRoutines([...routines, newRoutine]); setSelectedRoutine(newRoutine); setView('ROUTINE_DETAIL'); }}
+            />
+          )}
 
-      {/* Footer Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-surface/90 backdrop-blur-xl border-t border-white/10 z-50">
-        <div className="max-w-md mx-auto flex justify-between items-center p-4 px-8 relative">
-          
-          <button onClick={() => setView('DASHBOARD')} className={`flex flex-col items-center gap-1 ${view === 'DASHBOARD' ? 'text-primary' : 'text-gray-500'}`}>
-            <div className="relative">
-              <Layers className="w-5 h-5" />
-              {hasActiveMission && <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_8px_#00ffff]"></span>}
-            </div>
-            <span className="text-[10px] uppercase tracking-wider">Missions</span>
-          </button>
-          
-          <button onClick={() => setView('EXPLORE')} className={`flex flex-col items-center gap-1 ${view === 'EXPLORE' ? 'text-primary' : 'text-gray-500'}`}>
-            <Database className="w-5 h-5" />
-            <span className="text-[10px] uppercase tracking-wider">Intel</span>
-          </button>
+          {view === 'ROUTINE_DETAIL' && selectedRoutine && (
+            <RoutineDetailView 
+              routine={selectedRoutine}
+              onBack={() => setView('DASHBOARD')}
+              onStart={handleStartWorkout}
+              onSave={(updated) => { setRoutines(prev => prev.map(r => r.id === updated.id ? updated : r)); if (updated.isFavorite) { setRoutines(prev => prev.map(r => ({ ...r, isFavorite: r.id === updated.id }))); } setSelectedRoutine(updated); }}
+              onDelete={(id) => { setRoutines(prev => prev.filter(r => r.id !== id)); setView('DASHBOARD'); }}
+              onAddExercises={openExploreForRoutine}
+              onViewDetails={(ex) => setSelectedExerciseForDetail(ex)}
+              isNew={selectedRoutine.exercises.length === 0}
+            />
+          )}
 
-          {/* CENTRAL FAB */}
-          <button 
-             onClick={() => activeSession ? setView('WORKOUT') : null}
-             className={`
-               absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full flex items-center justify-center shadow-[0_0_20px_#00ffff40] text-black transition-all duration-300
-               ${activeSession ? 'bg-primary scale-110' : 'bg-gray-700 opacity-50 cursor-not-allowed'}
-             `}
-          >
-             <Dumbbell className="w-6 h-6" />
-          </button>
+          {view === 'WORKOUT' && activeSession && (
+            <WorkoutView 
+              session={activeSession}
+              onFinish={handleFinishWorkout}
+              onAbort={handleAbortWorkout}
+              onUpdateSession={handleUpdateSession}
+              onViewDetails={(ex) => setSelectedExerciseForDetail(ex)}
+              onBack={() => setView('DASHBOARD')}
+            />
+          )}
 
-          <button onClick={() => setView('LOGS')} className={`flex flex-col items-center gap-1 ${view === 'LOGS' ? 'text-primary' : 'text-gray-500'}`}>
-            <FileText className="w-5 h-5" />
-            <span className="text-[10px] uppercase tracking-wider">Logs</span>
-          </button>
+          {view === 'EXPLORE' && (
+             <ExploreView 
+               onAddExercise={pickerContext ? handleAddExercise : handleAddExerciseToActiveMission}
+               onViewDetails={(ex) => setSelectedExerciseForDetail(ex)}
+               onForkRoutine={(r) => { const newRoutine = { ...r, id: `fork_${Date.now()}`, name: `${r.name} (IMPORTED)`, isFavorite: false }; setRoutines([...routines, newRoutine]); }}
+               isPickerMode={!!pickerContext}
+               onExitPicker={exitPicker}
+               hasActiveMission={hasActiveMission}
+               activeMissionExerciseNames={activeMissionExerciseNames}
+             />
+          )}
 
-          <button onClick={() => setView('PROFILE')} className={`flex flex-col items-center gap-1 ${view === 'PROFILE' ? 'text-primary' : 'text-gray-500'}`}>
-            <User className="w-5 h-5" />
-            <span className="text-[10px] uppercase tracking-wider">Agent</span>
-          </button>
-        </div>
-      </nav>
+          {view === 'PROFILE' && (
+            <AgentView user={user} onUpdateUser={setUser} />
+          )}
 
-      {/* Global Exercise Detail Modal */}
-      {selectedExerciseForDetail && (
-         <ExerciseModal 
-            exercise={selectedExerciseForDetail} 
-            onClose={() => setSelectedExerciseForDetail(null)}
-            onAddToRoutine={
-               view === 'EXPLORE' && (hasActiveMission || pickerContext)
-               ? (pickerContext ? handleAddExerciseToRoutine : handleAddExerciseToActiveMission)
-               : undefined
-            }
-            actionLabel={view === 'EXPLORE' && !pickerContext ? "Add to Active Mission" : undefined}
-         />
-      )}
+          {view === 'LOGS' && (
+            <LogsView logs={workoutHistory} />
+          )}
+        </main>
+
+        <ExerciseModal 
+          exercise={selectedExerciseForDetail} 
+          onClose={() => setSelectedExerciseForDetail(null)}
+          onAddToRoutine={view === 'EXPLORE' ? (pickerContext ? handleAddExercise : handleAddExerciseToActiveMission) : undefined}
+          actionLabel={pickerContext === 'ROUTINE' ? "Add to Protocol" : "Add to Active Mission"}
+        />
+
+        {view !== 'WORKOUT' && (
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-3rem)] max-w-sm bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex justify-between items-center shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-40">
+            <button onClick={() => setView('DASHBOARD')} className={`p-3 rounded-xl transition-all ${view === 'DASHBOARD' || view === 'ROUTINE_DETAIL' ? 'bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'text-gray-500 hover:text-gray-300'}`}>
+               <div className="relative"><Layers className="w-5 h-5" />{hasActiveMission && <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full shadow-[0_0_5px_#00ffff]"></div>}</div>
+            </button>
+            <button onClick={() => setView('EXPLORE')} className={`p-3 rounded-xl transition-all ${view === 'EXPLORE' ? 'bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'text-gray-500 hover:text-gray-300'}`}><Database className="w-5 h-5" /></button>
+            
+            <button 
+              onClick={() => { if (activeSession) setView('WORKOUT'); else if (activeMission) handleStartWorkout(activeMission); }}
+              className={`
+                  w-14 h-14 rounded-2xl flex items-center justify-center border-2 shadow-lg transition-all mx-2
+                  ${activeSession 
+                    ? 'bg-primary border-primary text-black shadow-[0_0_30px_rgba(0,255,255,0.4)] animate-pulse' 
+                    : 'bg-surfaceHighlight border-white/10 text-gray-600 hover:text-white hover:border-white/30' // Gray but clickable if idle
+                  }
+              `}
+              disabled={!activeMission && !activeSession}
+            >
+                <Dumbbell className={`w-7 h-7 ${activeSession ? 'animate-bounce-slow' : ''}`} />
+            </button>
+            
+            <button onClick={() => setView('LOGS')} className={`p-3 rounded-xl transition-all ${view === 'LOGS' ? 'bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'text-gray-500 hover:text-gray-300'}`}><FileText className="w-5 h-5" /></button>
+            <button onClick={() => setView('PROFILE')} className={`p-3 rounded-xl transition-all ${view === 'PROFILE' ? 'bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'text-gray-500 hover:text-gray-300'}`}><User className="w-5 h-5" /></button>
+          </nav>
+        )}
+      </div>
     </div>
   );
 };
