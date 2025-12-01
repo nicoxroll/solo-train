@@ -338,6 +338,69 @@ export const FilterGroup: React.FC<{
   );
 };
 
+// Interactive Muscle Map Component
+const MuscleMap: React.FC<{ 
+  selected: string[]; 
+  onToggle: (muscle: string) => void;
+}> = ({ selected, onToggle }) => {
+  // Helper to check if any of the target aliases are selected
+  const isSelected = (aliases: string[]) => aliases.some(a => selected.includes(a));
+
+  const muscleGroups = [
+    { id: 'chest', label: 'CHEST', path: "M 85 55 L 115 55 L 110 80 L 90 80 Z", aliases: ['chest'] },
+    { id: 'shoulders', label: 'DELTS', path: "M 70 55 L 85 55 L 90 75 L 65 65 Z M 130 55 L 115 55 L 110 75 L 135 65 Z", aliases: ['shoulders'] },
+    { id: 'arms', label: 'ARMS', path: "M 65 65 L 90 75 L 85 110 L 55 100 Z M 135 65 L 110 75 L 115 110 L 145 100 Z", aliases: ['upper arms', 'lower arms'] },
+    { id: 'abs', label: 'CORE', path: "M 90 80 L 110 80 L 105 110 L 95 110 Z", aliases: ['waist', 'abs'] },
+    { id: 'legs', label: 'LEGS', path: "M 95 110 L 105 110 L 120 160 L 110 190 L 100 160 Z M 95 110 L 85 110 L 80 160 L 90 190 L 100 160 Z", aliases: ['upper legs', 'lower legs'] },
+    { id: 'back', label: 'BACK', path: "M 160 55 L 240 55 L 230 100 L 170 100 Z", aliases: ['back', 'lats', 'traps'], isBackView: true } // Simplified Back representation next to it
+  ];
+
+  const handleZoneClick = (group: typeof muscleGroups[0]) => {
+     // For simplicity, just toggle the first alias, or special logic
+     // If mapped to multiple, we might toggle the primary one (e.g. 'upper arms')
+     onToggle(group.aliases[0]);
+  };
+
+  return (
+    <div className="w-full flex justify-center py-4 bg-black/20 rounded border border-white/5 mb-4">
+       <svg viewBox="0 0 250 200" className="w-64 h-48 drop-shadow-lg">
+          {/* Front Body Silhouette Outline */}
+          <path d="M 100 20 A 15 15 0 0 1 100 50 A 5 5 0 0 0 100 55 L 130 55 L 145 100 L 120 190 L 80 190 L 55 100 L 70 55 L 100 55" 
+                fill="none" stroke="#333" strokeWidth="1" strokeDasharray="4 2" />
+
+          {/* Render Groups */}
+          {muscleGroups.map(group => {
+             const active = isSelected(group.aliases);
+             return (
+               <g key={group.id} onClick={() => handleZoneClick(group)} className="cursor-pointer group">
+                  <path 
+                    d={group.path} 
+                    fill={active ? '#00ffff' : 'rgba(255,255,255,0.05)'} 
+                    stroke={active ? '#00ffff' : 'rgba(255,255,255,0.3)'}
+                    strokeWidth="1"
+                    className="transition-all duration-300 hover:fill-primary/40"
+                  />
+                  {/* Label on Hover or Active */}
+                  {(active) && !group.isBackView && (
+                     <text x="30" y="30" fill="#00ffff" fontSize="8" fontFamily="monospace" className="uppercase animate-pulse">
+                        Target: {group.label}
+                     </text>
+                  )}
+                  {group.isBackView && (
+                      <text x="200" y="45" fill="#666" fontSize="8" fontFamily="monospace" textAnchor="middle">POSTERIOR</text>
+                  )}
+               </g>
+             )
+          })}
+          
+          {/* Decorative Head */}
+          <circle cx="100" cy="35" r="12" fill="none" stroke="#444" strokeWidth="1" />
+          <circle cx="200" cy="35" r="12" fill="none" stroke="#444" strokeWidth="1" />
+       </svg>
+    </div>
+  );
+};
+
 export const FilterModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -377,6 +440,13 @@ export const FilterModal: React.FC<{
 
        {/* Content */}
        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+          
+          {/* VISUAL MUSCLE FILTER */}
+          <div className="mb-8">
+             <h3 className="text-xs text-gray-500 uppercase tracking-widest mb-4 border-l-2 border-primary pl-2">Visual Targeting</h3>
+             <MuscleMap selected={selectedFilters} onToggle={onToggleFilter} />
+          </div>
+
           {sections.map((section) => {
              // Safe check for string to avoid toLowerCase crash
              const filteredOptions = section.options.filter(opt => String(opt).toLowerCase().includes(filterSearch.toLowerCase()));

@@ -1392,15 +1392,15 @@ const App: React.FC = () => {
             <button onClick={() => setView('EXPLORE')} className={`p-3 rounded-xl transition-all ${view === 'EXPLORE' ? 'bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'text-gray-500 hover:text-gray-300'}`}><Database className="w-5 h-5" /></button>
             
             <button 
-              onClick={() => { if (activeSession) setView('WORKOUT'); else if (activeMission) handleStartWorkout(activeMission); }}
+              onClick={() => { if (activeSession) setView('WORKOUT'); }}
               className={`
                   w-14 h-14 rounded-2xl flex items-center justify-center border-2 shadow-lg transition-all mx-2
                   ${activeSession 
                     ? 'bg-primary border-primary text-black shadow-[0_0_30px_rgba(0,255,255,0.4)] animate-pulse' 
-                    : 'bg-surfaceHighlight border-white/10 text-gray-600 hover:text-white hover:border-white/30' // Gray but clickable if idle
+                    : 'bg-surfaceHighlight border-white/10 text-gray-600 cursor-default' // Gray and NOT clickable if no active session
                   }
               `}
-              disabled={!activeMission && !activeSession}
+              disabled={!activeSession}
             >
                 <Dumbbell className={`w-7 h-7 ${activeSession ? 'animate-bounce-slow' : ''}`} />
             </button>
