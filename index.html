@@ -18,7 +18,7 @@
               background: '#050505',
               surface: '#0a0a0a',
               surfaceHighlight: '#121212',
-              primary: '#00ffff', // Electric Cyan
+              primary: 'var(--color-primary)', // Dynamic CSS Variable
               secondary: '#ffffff',
               muted: '#404040',
             }
@@ -28,6 +28,9 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500&family=JetBrains+Mono:wght@200&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --color-primary: #00ffff; /* Default Electric Cyan */
+      }
       body {
         background-color: #050505;
         color: #ffffff;
@@ -44,7 +47,7 @@
         background: #333; 
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #00ffff; 
+        background: var(--color-primary); 
       }
       .glass-panel {
         background: rgba(18, 18, 18, 0.6);

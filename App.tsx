@@ -7,7 +7,7 @@ import {
   User, Dumbbell, Play, Search, Plus, Check, 
   Trash2, ChevronLeft, ChevronRight, Settings, Activity, Save, 
   X, ChevronDown, ChevronUp, Image as ImageIcon,
-  Database, Layers, BrainCircuit, AlertTriangle, FileText, Calendar, Copy, SlidersHorizontal, Info, RefreshCw, Ban, BarChart3, List, Target, Zap, ArrowLeft, ArrowRight, Eye, EyeOff, Radio, Cpu, FileBadge, Crosshair, MonitorPlay, Sparkles, Timer, RotateCcw
+  Database, Layers, BrainCircuit, AlertTriangle, FileText, Calendar, Copy, SlidersHorizontal, Info, RefreshCw, Ban, BarChart3, List, Target, Zap, ArrowLeft, ArrowRight, Eye, EyeOff, Radio, Cpu, FileBadge, Crosshair, MonitorPlay, Sparkles, Timer, RotateCcw, Palette
 } from 'lucide-react';
 
 // --- Helper Data & Functions ---
@@ -43,20 +43,33 @@ const PREMADE_ROUTINES: Routine[] = [];
 
 const DUMMY_LOGS: WorkoutLog[] = [];
 
+// Available Theme Colors
+const THEME_COLORS = [
+  { id: 'cyan', hex: '#00ffff', label: 'CYAN' },
+  { id: 'red', hex: '#ff2a2a', label: 'RED' },
+  { id: 'pink', hex: '#ff00ff', label: 'PINK' },
+  { id: 'violet', hex: '#bd00ff', label: 'VIOLET' },
+  { id: 'green', hex: '#00ff41', label: 'GREEN' },
+];
+
 // --- Sub-Components ---
 
 // 1. LOGIN VIEW
-const LoginView: React.FC<{ onLogin: () => void }> = ({ onLogin }) => (
+const LoginView: React.FC<{ 
+  onLogin: () => void;
+  currentColor: string;
+  onChangeColor: (color: string) => void;
+}> = ({ onLogin, currentColor, onChangeColor }) => (
   <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden bg-black">
-    <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,black_40%,transparent_100%)] pointer-events-none"></div>
+    <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,black_40%,transparent_100%)] pointer-events-none" style={{ filter: `hue-rotate(0deg)` /* Dynamic hue logic handled via CSS variable in index but here we stick to pure color overrides */ }}></div>
     
     {/* Glitch effect container */}
     <div className="z-10 w-full max-w-md space-y-16 text-center">
       <div className="space-y-4 relative">
-        <h1 className="text-7xl md:text-8xl font-mono font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-600 drop-shadow-[0_0_25px_rgba(0,255,255,0.3)] select-none">
-          SOLO<span className="text-primary drop-shadow-[0_0_10px_#00ffff]">TRAIN</span>
+        <h1 className="text-7xl md:text-8xl font-mono font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-600 drop-shadow-[0_0_25px_var(--color-primary)] select-none">
+          SOLO<span className="text-primary drop-shadow-[0_0_10px_var(--color-primary)]">TRAIN</span>
         </h1>
-        <div className="h-px w-24 bg-primary mx-auto shadow-[0_0_10px_#00ffff]"></div>
+        <div className="h-px w-24 bg-primary mx-auto shadow-[0_0_10px_var(--color-primary)]"></div>
         <p className="text-primary/60 font-mono text-xs tracking-[0.5em] uppercase animate-pulse">Tactical Performance Interface</p>
       </div>
 
@@ -76,6 +89,36 @@ const LoginView: React.FC<{ onLogin: () => void }> = ({ onLogin }) => (
            Initialize System
            <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
         </Button>
+      </div>
+
+      {/* Color Picker */}
+      <div className="space-y-4">
+        <div className="text-[10px] text-gray-600 font-mono uppercase tracking-[0.3em] flex items-center justify-center gap-2">
+           <Palette className="w-3 h-3" /> Interface Theme
+        </div>
+        <div className="flex justify-center gap-4">
+           {THEME_COLORS.map(color => (
+             <button
+               key={color.id}
+               onClick={() => onChangeColor(color.hex)}
+               className={`w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center relative group`}
+               style={{ 
+                 borderColor: currentColor === color.hex ? color.hex : 'rgba(255,255,255,0.1)',
+                 boxShadow: currentColor === color.hex ? `0 0 15px ${color.hex}` : 'none',
+                 background: 'transparent'
+               }}
+             >
+                <div 
+                  className="w-3 h-3 rounded-full transition-all" 
+                  style={{ backgroundColor: color.hex }}
+                ></div>
+                {/* Tooltipish label */}
+                <span className={`absolute -bottom-6 text-[8px] font-mono uppercase tracking-widest text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap`}>
+                   {color.label}
+                </span>
+             </button>
+           ))}
+        </div>
       </div>
     </div>
     
@@ -230,7 +273,7 @@ const OnboardingView: React.FC<{ onComplete: (data: SetupData) => void }> = ({ o
   );
 };
 
-// 1.7 AI MISSION GENERATOR MODAL
+// 1.7 AI MISSION GENERATOR MODAL (unchanged)
 const AiMissionModal: React.FC<{ 
   isOpen: boolean; 
   onClose: () => void; 
@@ -286,7 +329,7 @@ const AiMissionModal: React.FC<{
   );
 };
 
-// 2. EXERCISE MODAL
+// 2. EXERCISE MODAL (unchanged)
 const ExerciseModal: React.FC<{ 
   exercise: Exercise | null; 
   onClose: () => void; 
@@ -455,7 +498,7 @@ const ExerciseModal: React.FC<{
   );
 };
 
-// 3. DASHBOARD VIEW
+// 3. DASHBOARD VIEW (unchanged)
 const DashboardView: React.FC<{ 
   user: UserProfile; 
   routines: Routine[]; 
@@ -708,7 +751,7 @@ const RoutineDetailView: React.FC<{
   );
 };
 
-// 5. WORKOUT VIEW (Updated with Rest Timer)
+// 5. WORKOUT VIEW (unchanged)
 const WorkoutView: React.FC<{
   session: WorkoutSession;
   onFinish: (s: WorkoutSession) => void;
@@ -1070,8 +1113,13 @@ const ExploreView: React.FC<{
   );
 };
 
-// 7. AGENT VIEW (unchanged)
-const AgentView: React.FC<{ user: UserProfile; onUpdateUser: (u: UserProfile) => void }> = ({ user, onUpdateUser }) => {
+// 7. AGENT VIEW (Updated to allow editing profile data)
+const AgentView: React.FC<{ 
+  user: UserProfile; 
+  onUpdateUser: (u: UserProfile) => void;
+  currentColor: string; 
+  onUpdateColor: (color: string) => void; 
+}> = ({ user, onUpdateUser, currentColor, onUpdateColor }) => {
    const [isEditing, setIsEditing] = useState(false);
    
    const handleStatChange = (idx: number, newVal: number) => {
@@ -1123,32 +1171,114 @@ const AgentView: React.FC<{ user: UserProfile; onUpdateUser: (u: UserProfile) =>
          <div className="glass-panel p-4 border border-white/10 relative overflow-hidden">
             <div className="absolute top-2 right-2 text-primary opacity-50"><Crosshair className="w-6 h-6" /></div>
             <h3 className="text-sm font-mono uppercase tracking-widest text-white mb-4">Biometric Balance</h3>
-            <RadarChart data={user.stats} />
+            <RadarChart data={user.stats} color={currentColor} />
          </div>
 
          <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
-               <h3 className="text-sm font-mono uppercase tracking-widest text-white">{isEditing ? 'Biometric Calibration' : 'Performance Trends'}</h3>
+               <h3 className="text-sm font-mono uppercase tracking-widest text-white">{isEditing ? 'Profile Calibration' : 'Performance Trends'}</h3>
             </div>
             
             {isEditing ? (
                <div className="space-y-6">
-                  {user.stats.map((stat, idx) => (
-                    <div key={stat.label}>
-                       <div className="flex justify-between text-xs font-mono uppercase mb-2 text-gray-400">
-                          <span>{stat.label}</span>
-                          <span className="text-primary">{stat.value} / {stat.fullMark}</span>
-                       </div>
-                       <input 
-                         type="range" 
-                         min="0" 
-                         max="120" 
-                         value={stat.value} 
-                         onChange={(e) => handleStatChange(idx, parseInt(e.target.value))}
-                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
-                       />
-                    </div>
-                  ))}
+                  {/* Identity Edit */}
+                  <div>
+                     <label className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 block font-mono">Identity Designation</label>
+                     <Input 
+                        value={user.name} 
+                        onChange={(e) => onUpdateUser({...user, name: e.target.value})}
+                        className="font-mono"
+                     />
+                  </div>
+
+                  {/* Experience Edit */}
+                  <div>
+                     <label className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 block font-mono">Class Authorization</label>
+                     <div className="grid grid-cols-3 gap-2">
+                        {['BEGINNER', 'INTERMEDIATE', 'EXPERT'].map((level) => (
+                           <button 
+                              key={level}
+                              onClick={() => onUpdateUser({...user, experience: level as any})}
+                              className={`
+                                 py-2 px-1 text-[10px] font-mono border uppercase transition-all
+                                 ${user.experience === level 
+                                    ? 'bg-primary text-black border-primary font-bold' 
+                                    : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30'
+                                 }
+                              `}
+                           >
+                              {level}
+                           </button>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* Goal Edit */}
+                  <div>
+                     <label className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 block font-mono">Mission Directive</label>
+                     <div className="grid grid-cols-3 gap-2">
+                        {['STRENGTH', 'HYPERTROPHY', 'ENDURANCE'].map((goal) => (
+                           <button 
+                              key={goal}
+                              onClick={() => onUpdateUser({...user, goal: goal as any})}
+                              className={`
+                                 py-2 px-1 text-[10px] font-mono border uppercase transition-all
+                                 ${user.goal === goal 
+                                    ? 'bg-primary text-black border-primary font-bold' 
+                                    : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30'
+                                 }
+                              `}
+                           >
+                              {goal}
+                           </button>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* Biometric Sliders */}
+                  <div className="space-y-4 pt-4 border-t border-white/10">
+                     <h4 className="text-[10px] text-gray-500 uppercase tracking-widest font-mono">Stat Calibration</h4>
+                     {user.stats.map((stat, idx) => (
+                     <div key={stat.label}>
+                        <div className="flex justify-between text-xs font-mono uppercase mb-2 text-gray-400">
+                           <span>{stat.label}</span>
+                           <span className="text-primary">{stat.value} / {stat.fullMark}</span>
+                        </div>
+                        <input 
+                           type="range" 
+                           min="0" 
+                           max="120" 
+                           value={stat.value} 
+                           onChange={(e) => handleStatChange(idx, parseInt(e.target.value))}
+                           className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                        />
+                     </div>
+                     ))}
+                  </div>
+
+                  {/* Interface Theme Picker */}
+                  <div className="space-y-4 pt-4 border-t border-white/10">
+                     <h4 className="text-[10px] text-gray-500 uppercase tracking-widest font-mono">Interface Theme</h4>
+                     <div className="flex gap-4">
+                        {THEME_COLORS.map(color => (
+                          <button
+                            key={color.id}
+                            onClick={() => onUpdateColor(color.hex)}
+                            className={`w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center relative group`}
+                            style={{ 
+                              borderColor: currentColor === color.hex ? color.hex : 'rgba(255,255,255,0.1)',
+                              boxShadow: currentColor === color.hex ? `0 0 15px ${color.hex}` : 'none',
+                              background: 'transparent'
+                            }}
+                          >
+                             <div 
+                               className="w-3 h-3 rounded-full transition-all" 
+                               style={{ backgroundColor: color.hex }}
+                             ></div>
+                          </button>
+                        ))}
+                     </div>
+                  </div>
                </div>
             ) : (
                <div className="grid grid-cols-1 gap-6">
@@ -1158,26 +1288,28 @@ const AgentView: React.FC<{ user: UserProfile; onUpdateUser: (u: UserProfile) =>
                            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-mono">{stat.label}</span>
                            <span className="text-lg text-white font-mono">{stat.value}</span>
                         </div>
-                        <SimpleChart data={getTrendData(stat.value)} labels={['', '', '', '', '', 'NOW']} />
+                        <SimpleChart data={getTrendData(stat.value)} labels={['', '', '', '', '', 'NOW']} color={currentColor} />
                     </div>
                   ))}
                </div>
             )}
          </div>
 
-         <div className="space-y-4 pt-4 border-t border-white/10">
-            <h3 className="text-sm font-mono uppercase tracking-widest text-white border-b border-white/10 pb-2">Service Record</h3>
-            <div className="grid grid-cols-2 gap-4">
-               <div className="bg-white/5 p-4 border border-white/5">
-                  <div className="text-[10px] text-gray-500 uppercase tracking-widest">Experience</div>
-                  <div className="text-lg text-white font-mono">{user.experience}</div>
-               </div>
-               <div className="bg-white/5 p-4 border border-white/5">
-                  <div className="text-[10px] text-gray-500 uppercase tracking-widest">Joined</div>
-                  <div className="text-lg text-white font-mono">2024</div>
+         {!isEditing && (
+            <div className="space-y-4 pt-4 border-t border-white/10">
+               <h3 className="text-sm font-mono uppercase tracking-widest text-white border-b border-white/10 pb-2">Service Record</h3>
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white/5 p-4 border border-white/5">
+                     <div className="text-[10px] text-gray-500 uppercase tracking-widest">Experience</div>
+                     <div className="text-lg text-white font-mono">{user.experience}</div>
+                  </div>
+                  <div className="bg-white/5 p-4 border border-white/5">
+                     <div className="text-[10px] text-gray-500 uppercase tracking-widest">Directive</div>
+                     <div className="text-lg text-white font-mono">{user.goal}</div>
+                  </div>
                </div>
             </div>
-         </div>
+         )}
       </div>
    );
 };
@@ -1246,7 +1378,13 @@ const LogsView: React.FC<{ logs: WorkoutLog[] }> = ({ logs }) => {
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('LOGIN');
-  // ... state declarations ...
+  const [themeColor, setThemeColor] = useState('#00ffff'); // Default Cyan
+  
+  // Apply theme color
+  useEffect(() => {
+    document.documentElement.style.setProperty('--color-primary', themeColor);
+  }, [themeColor]);
+
   const [user, setUser] = useState<UserProfile>({
     name: 'Operative',
     email: 'user@solotrain.com',
@@ -1467,7 +1605,7 @@ const App: React.FC = () => {
      }
   };
 
-  if (view === 'LOGIN') return <LoginView onLogin={handleLogin} />;
+  if (view === 'LOGIN') return <LoginView onLogin={handleLogin} currentColor={themeColor} onChangeColor={setThemeColor} />;
   if (view === 'SETUP') return <OnboardingView onComplete={handleFinishSetup} />;
 
   return (
@@ -1523,7 +1661,12 @@ const App: React.FC = () => {
           )}
 
           {view === 'PROFILE' && (
-            <AgentView user={user} onUpdateUser={setUser} />
+            <AgentView 
+              user={user} 
+              onUpdateUser={setUser} 
+              currentColor={themeColor}
+              onUpdateColor={setThemeColor}
+            />
           )}
 
           {view === 'LOGS' && (
@@ -1547,7 +1690,7 @@ const App: React.FC = () => {
         {view !== 'WORKOUT' && (
           <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-3rem)] max-w-sm bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex justify-between items-center shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-40">
             <button onClick={() => setView('DASHBOARD')} className={`p-3 rounded-xl transition-all ${view === 'DASHBOARD' || view === 'ROUTINE_DETAIL' ? 'bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'text-gray-500 hover:text-gray-300'}`}>
-               <div className="relative"><Layers className="w-5 h-5" />{hasActiveMission && <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full shadow-[0_0_5px_#00ffff]"></div>}</div>
+               <div className="relative"><Layers className="w-5 h-5" />{hasActiveMission && <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full shadow-[0_0_5px_var(--color-primary)]"></div>}</div>
             </button>
             <button onClick={() => setView('EXPLORE')} className={`p-3 rounded-xl transition-all ${view === 'EXPLORE' ? 'bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'text-gray-500 hover:text-gray-300'}`}><Database className="w-5 h-5" /></button>
             
@@ -1556,7 +1699,7 @@ const App: React.FC = () => {
               className={`
                   w-14 h-14 rounded-2xl flex items-center justify-center border-2 shadow-lg transition-all mx-2
                   ${activeSession 
-                    ? 'bg-primary border-primary text-black shadow-[0_0_30px_rgba(0,255,255,0.4)] animate-pulse' 
+                    ? 'bg-primary border-primary text-black shadow-[0_0_30px_var(--color-primary)] animate-pulse' 
                     : 'bg-surfaceHighlight border-white/10 text-gray-600 cursor-default' // Gray and NOT clickable if no active session
                   }
               `}
