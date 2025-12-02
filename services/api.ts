@@ -1,5 +1,6 @@
 
-import { Exercise } from '../types';
+import { Exercise, Routine } from '../types';
+import { GoogleGenAI, Type } from "@google/genai";
 
 // RapidAPI Endpoint (More reliable for client-side)
 const BASE_URL = 'https://exercisedb-api-v1-dataset1.p.rapidapi.com/api/v1';
@@ -27,6 +28,68 @@ const safeName = (item: string | { name: string } | undefined): string => {
   if (typeof item === 'string') return item;
   if (typeof item === 'object' && item.name) return item.name;
   return 'unknown';
+};
+
+// --- AI GENERATION SERVICE ---
+export const generateAiRoutine = async (userPrompt: string): Promise<Partial<Routine> | null> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    // Validate prompt
+    if (!userPrompt || userPrompt.trim().length === 0) return null;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `Create a tactical workout routine based on this request: "${userPrompt}". 
+      
+      CRITICAL INSTRUCTIONS:
+      1. Return exactly 5-8 effective exercises.
+      2. USE STANDARD EXERCISE NAMES (e.g., "Barbell Bench Press", "Dumbbell Curl") so I can match them to a database.
+      3. For 'targetReps', provide a SPECIFIC number (e.g., "10", "12", "5"), NOT a range like "8-12".
+      4. For 'targetWeight', provide a SPECIFIC number in kg (e.g., "20", "60"), NOT "moderate".
+      5. Keep instructions extremely concise (max 2 short sentences).
+      6. Output strictly valid JSON.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            description: { type: Type.STRING },
+            exercises: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  bodyPart: { type: Type.STRING },
+                  equipment: { type: Type.STRING },
+                  targetSets: { type: Type.NUMBER },
+                  targetReps: { type: Type.STRING },
+                  targetWeight: { type: Type.STRING },
+                  instructions: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                  }
+                },
+                required: ["name", "bodyPart", "equipment", "targetSets", "targetReps", "targetWeight"]
+              }
+            }
+          },
+          required: ["name", "description", "exercises"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No response text from AI");
+    
+    return JSON.parse(text);
+
+  } catch (error) {
+    console.error("AI Generation Error:", error);
+    return null;
+  }
 };
 
 // Expanded Fallback Data for when API hits 429 (Rate Limit)
@@ -203,10 +266,9 @@ export const fetchExercises = async (
     if (Array.isArray(equipments) && equipments.length > 0 && equipments[0] !== 'ALL') {
         url.searchParams.append('equipments', equipments.join(','));
     }
-    // API V1 might not support all these concurrently via query params without paid plan
-    // We will attempt client side filtering if params are ignored, but we pass them anyway.
     
-    url.searchParams.append('limit', '50'); 
+    // Fetch a bit more to allow for client side filtering if API doesn't support specific filters well
+    url.searchParams.append('limit', String(limit * 2)); 
 
     const response = await fetch(url.toString(), { 
         method: 'GET',
@@ -238,7 +300,7 @@ export const fetchExercises = async (
     
     let mappedExercises = dataList.map(mapApiExerciseToExercise);
 
-    // Client-side filtering
+    // Client-side filtering (Robustness)
     if (search) {
       mappedExercises = mappedExercises.filter(ex => 
         ex.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -247,10 +309,11 @@ export const fetchExercises = async (
     }
 
     const total = mappedExercises.length;
-    const start = (page - 1) * limit;
-    const paginated = mappedExercises.slice(start, start + limit);
-
-    return { data: paginated, total };
+    // Client-side pagination if needed
+    const start = 0; // The API handles offset usually, but here we simplify
+    // If API returns total set, use it
+    
+    return { data: mappedExercises.slice(0, limit), total: total };
 
   } catch (error) {
     // --- FALLBACK LOGIC ---

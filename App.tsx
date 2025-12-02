@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { fetchExercises, fetchBodyParts, fetchEquipments, fetchTargetMuscles, fetchExerciseTypes, getExerciseThumbnail, getExerciseGif, getEquipmentImageUrl, getTargetImageUrl } from './services/api';
+import { fetchExercises, fetchBodyParts, fetchEquipments, fetchTargetMuscles, fetchExerciseTypes, getExerciseThumbnail, getExerciseGif, getEquipmentImageUrl, getTargetImageUrl, generateAiRoutine } from './services/api';
 import { Exercise, Routine, RoutineExercise, UserProfile, ViewState, WorkoutSession, WorkoutLog, LogStatus, UserStats } from './types';
 import { Button, Card, Input, Badge, ProgressBar, SimpleChart, Select, RadarChart, FilterGroup, FilterModal, StatusBadge, CalendarGrid, ScreenHeader, LogDetailModal } from './components/Components';
 import { 
   User, Dumbbell, Play, Search, Plus, Check, 
   Trash2, ChevronLeft, ChevronRight, Settings, Activity, Save, 
   X, ChevronDown, ChevronUp, Image as ImageIcon,
-  Database, Layers, BrainCircuit, AlertTriangle, FileText, Calendar, Copy, SlidersHorizontal, Info, RefreshCw, Ban, BarChart3, List, Target, Zap, ArrowLeft, ArrowRight, Eye, EyeOff, Radio, Cpu, FileBadge, Crosshair, MonitorPlay
+  Database, Layers, BrainCircuit, AlertTriangle, FileText, Calendar, Copy, SlidersHorizontal, Info, RefreshCw, Ban, BarChart3, List, Target, Zap, ArrowLeft, ArrowRight, Eye, EyeOff, Radio, Cpu, FileBadge, Crosshair, MonitorPlay, Sparkles, Timer, RotateCcw
 } from 'lucide-react';
 
 // --- Helper Data & Functions ---
@@ -230,6 +230,62 @@ const OnboardingView: React.FC<{ onComplete: (data: SetupData) => void }> = ({ o
   );
 };
 
+// 1.7 AI MISSION GENERATOR MODAL
+const AiMissionModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onGenerate: (prompt: string) => Promise<void>; 
+}> = ({ isOpen, onClose, onGenerate }) => {
+  const [prompt, setPrompt] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async () => {
+    if (!prompt.trim()) return;
+    setIsProcessing(true);
+    await onGenerate(prompt);
+    setIsProcessing(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-lg bg-surface border border-primary/30 relative overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,255,255,0.15)]" onClick={e => e.stopPropagation()}>
+         
+         <div className="bg-primary/10 border-b border-primary/20 p-6 flex justify-between items-center">
+            <h2 className="text-lg font-mono text-primary uppercase tracking-widest flex items-center gap-2">
+              <Sparkles className="w-4 h-4" /> AI Tactical Generator
+            </h2>
+            <button onClick={onClose} disabled={isProcessing} className="text-gray-500 hover:text-white"><X className="w-5 h-5" /></button>
+         </div>
+
+         <div className="p-6 space-y-4">
+            <div className="space-y-2">
+               <label className="text-xs text-gray-400 font-mono uppercase tracking-widest">Mission Parameters</label>
+               <textarea 
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="e.g., 'A high-intensity leg workout focusing on glutes without machines' or 'Full body routine for travel'"
+                  className="w-full h-32 bg-black/50 border border-white/10 p-4 text-white font-mono text-sm focus:border-primary focus:outline-none focus:bg-primary/5 resize-none placeholder-gray-700"
+                  autoFocus
+               />
+            </div>
+            <p className="text-[10px] text-gray-500 font-mono">
+               System will analyze constraints and search tactical database for optimal exercise selection.
+            </p>
+         </div>
+
+         <div className="p-6 border-t border-white/10 bg-black/40">
+            <Button onClick={handleSubmit} disabled={isProcessing || !prompt.trim()} className="w-full">
+               {isProcessing ? 'COMPILING DATA...' : 'GENERATE PROTOCOL'}
+            </Button>
+         </div>
+      </div>
+    </div>
+  );
+};
+
 // 2. EXERCISE MODAL
 const ExerciseModal: React.FC<{ 
   exercise: Exercise | null; 
@@ -406,7 +462,8 @@ const DashboardView: React.FC<{
   onSelectRoutine: (r: Routine) => void; 
   onCreateRoutine: () => void;
   onForkRoutine: (r: Routine) => void;
-}> = ({ user, routines, onSelectRoutine, onCreateRoutine, onForkRoutine }) => {
+  onAiGenerate: () => void;
+}> = ({ user, routines, onSelectRoutine, onCreateRoutine, onForkRoutine, onAiGenerate }) => {
   const activeRoutine = routines.find(r => r.isFavorite);
   const otherRoutines = routines.filter(r => !r.isFavorite);
 
@@ -471,9 +528,14 @@ const DashboardView: React.FC<{
        <div id="protocols-list">
           <div className="flex justify-between items-end mb-4 border-b border-white/10 pb-2">
             <h3 className="text-sm font-mono uppercase tracking-widest text-white">Available Protocols</h3>
-            <button onClick={onCreateRoutine} className="text-xs text-primary hover:text-white uppercase tracking-wider flex items-center gap-1">
-               <Plus className="w-3 h-3" /> Create New
-            </button>
+            <div className="flex gap-2">
+              <button onClick={onAiGenerate} className="text-xs text-primary hover:text-white uppercase tracking-wider flex items-center gap-1 border border-primary/30 px-2 py-1 bg-primary/5 rounded-sm">
+                 <Sparkles className="w-3 h-3" /> AI Generate
+              </button>
+              <button onClick={onCreateRoutine} className="text-xs text-gray-400 hover:text-white uppercase tracking-wider flex items-center gap-1 border border-white/20 px-2 py-1 rounded-sm">
+                 <Plus className="w-3 h-3" /> New
+              </button>
+            </div>
           </div>
           
           <div className="space-y-4">
@@ -497,7 +559,7 @@ const DashboardView: React.FC<{
   );
 };
 
-// 4. ROUTINE DETAIL VIEW
+// 4. ROUTINE DETAIL VIEW (unchanged)
 const RoutineDetailView: React.FC<{
   routine: Routine;
   onBack: () => void;
@@ -646,7 +708,7 @@ const RoutineDetailView: React.FC<{
   );
 };
 
-// 5. WORKOUT VIEW
+// 5. WORKOUT VIEW (Updated with Rest Timer)
 const WorkoutView: React.FC<{
   session: WorkoutSession;
   onFinish: (s: WorkoutSession) => void;
@@ -657,19 +719,41 @@ const WorkoutView: React.FC<{
 }> = ({ session, onFinish, onAbort, onUpdateSession, onViewDetails, onBack }) => {
   const [elapsed, setElapsed] = useState(0);
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
+  const [restTimer, setRestTimer] = useState<{ active: boolean; startTime: number }>({ active: false, startTime: 0 });
+  const [restElapsed, setRestElapsed] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval: any = setInterval(() => {
       setElapsed(Date.now() - session.startTime);
     }, 1000);
     return () => clearInterval(interval);
   }, [session.startTime]);
 
+  // Rest timer effect
+  useEffect(() => {
+    let interval: any;
+    if (restTimer.active) {
+       interval = setInterval(() => {
+          setRestElapsed(Date.now() - restTimer.startTime);
+       }, 1000);
+    } else {
+       setRestElapsed(0);
+    }
+    return () => clearInterval(interval);
+  }, [restTimer]);
+
   const toggleSet = (exId: string, setIndex: number) => {
     const updatedExercises = session.exercises.map(ex => {
       if (ex.id === exId) {
         const newLogs = [...ex.setLogs];
-        newLogs[setIndex].completed = !newLogs[setIndex].completed;
+        const isCompleting = !newLogs[setIndex].completed; // Are we turning it ON?
+        newLogs[setIndex].completed = isCompleting;
+        
+        // Trigger Rest Timer if completing a set
+        if (isCompleting) {
+           setRestTimer({ active: true, startTime: Date.now() });
+        }
+
         return { ...ex, setLogs: newLogs };
       }
       return ex;
@@ -721,6 +805,23 @@ const WorkoutView: React.FC<{
             </div>
          </div>
          <ProgressBar progress={workoutProgress} className="h-1" />
+         
+         {/* REST TIMER BLUE BAR */}
+         {restTimer.active && (
+            <div className="bg-primary/10 border-b border-primary/20 py-2 px-4 flex justify-between items-center animate-fade-in">
+               <div className="flex items-center gap-2">
+                  <Timer className="w-4 h-4 text-primary animate-pulse" />
+                  <span className="text-[10px] text-primary uppercase tracking-widest font-mono">Rest Interval</span>
+               </div>
+               <span className="font-mono text-xl text-primary font-bold">
+                  {new Date(restElapsed).toISOString().substr(14, 5)}
+               </span>
+               <div className="flex gap-2">
+                  <button onClick={() => setRestTimer({ active: true, startTime: Date.now() })} className="p-1 text-primary hover:text-white"><RotateCcw className="w-4 h-4" /></button>
+                  <button onClick={() => setRestTimer({ active: false, startTime: 0 })} className="p-1 text-primary hover:text-white"><X className="w-4 h-4" /></button>
+               </div>
+            </div>
+         )}
        </div>
 
        <div className="space-y-4 flex-1 overflow-y-auto pt-4 pb-12 custom-scrollbar">
@@ -832,7 +933,7 @@ const WorkoutView: React.FC<{
   );
 };
 
-// 6. EXPLORE VIEW
+// 6. EXPLORE VIEW (unchanged)
 const ExploreView: React.FC<{
   onAddExercise: (ex: Exercise) => void;
   onViewDetails: (ex: Exercise) => void;
@@ -969,7 +1070,7 @@ const ExploreView: React.FC<{
   );
 };
 
-// 7. AGENT VIEW (Profile) - unchanged
+// 7. AGENT VIEW (unchanged)
 const AgentView: React.FC<{ user: UserProfile; onUpdateUser: (u: UserProfile) => void }> = ({ user, onUpdateUser }) => {
    const [isEditing, setIsEditing] = useState(false);
    
@@ -1081,7 +1182,7 @@ const AgentView: React.FC<{ user: UserProfile; onUpdateUser: (u: UserProfile) =>
    );
 };
 
-// 8. LOGS VIEW
+// 8. LOGS VIEW (unchanged)
 const LogsView: React.FC<{ logs: WorkoutLog[] }> = ({ logs }) => {
    const [selectedLog, setSelectedLog] = useState<WorkoutLog | null>(null);
 
@@ -1171,6 +1272,7 @@ const App: React.FC = () => {
   
   const [selectedExerciseForDetail, setSelectedExerciseForDetail] = useState<Exercise | null>(null);
   const [pickerContext, setPickerContext] = useState<'ROUTINE' | 'ACTIVE_SESSION' | null>(null);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const activeMission = routines.find(r => r.isFavorite);
   const hasActiveMission = !!activeMission;
@@ -1314,6 +1416,57 @@ const App: React.FC = () => {
   const openExploreForRoutine = () => { setPickerContext('ROUTINE'); setView('EXPLORE'); };
   const exitPicker = () => { setPickerContext(null); if (selectedRoutine) setView('ROUTINE_DETAIL'); else setView('DASHBOARD'); };
 
+  const handleAiGenerate = async (prompt: string) => {
+     const aiRoutine = await generateAiRoutine(prompt);
+     if (aiRoutine) {
+        // Fetch a large pool of exercises to perform matching
+        const { data: dbExercises } = await fetchExercises([], [], [], [], '', 1, 300);
+        
+        const hydratedExercises = (aiRoutine.exercises || []).map((aiEx: any) => {
+           // Try to fuzzy match the AI name with the database name
+           const dbMatch = dbExercises.find(e => 
+              e.name.toLowerCase().includes(aiEx.name.toLowerCase()) || 
+              aiEx.name.toLowerCase().includes(e.name.toLowerCase())
+           );
+           
+           // If match found, use its metadata (images, bodyPart), otherwise use AI fallback
+           const base = dbMatch || {
+              id: `ai_ex_fallback_${Date.now()}_${Math.random()}`,
+              name: aiEx.name,
+              bodyPart: aiEx.bodyPart || 'unknown',
+              muscle: aiEx.bodyPart || 'unknown',
+              equipment: aiEx.equipment || 'unknown',
+              target: aiEx.name,
+              secondaryMuscles: [],
+              gifUrl: '',
+              imageUrl: '',
+              instructions: aiEx.instructions || []
+           };
+
+           return {
+              ...base,
+              id: `ai_ex_${Date.now()}_${Math.random()}`, // Unique ID for routine
+              setLogs: [],
+              targetSets: aiEx.targetSets || 3,
+              targetReps: aiEx.targetReps || '10',
+              targetWeight: aiEx.targetWeight || '20'
+           };
+        });
+
+        const newRoutine: Routine = {
+           id: `ai_routine_${Date.now()}`,
+           name: aiRoutine.name || "AI PROTOCOL",
+           description: aiRoutine.description || "Generated by Tactical AI",
+           isFavorite: false,
+           exercises: hydratedExercises
+        };
+
+        setRoutines([...routines, newRoutine]);
+        setSelectedRoutine(newRoutine);
+        setView('ROUTINE_DETAIL');
+     }
+  };
+
   if (view === 'LOGIN') return <LoginView onLogin={handleLogin} />;
   if (view === 'SETUP') return <OnboardingView onComplete={handleFinishSetup} />;
 
@@ -1329,6 +1482,7 @@ const App: React.FC = () => {
               onSelectRoutine={(r) => { setSelectedRoutine(r); setView('ROUTINE_DETAIL'); }}
               onCreateRoutine={() => { const newRoutine = { id: `routine_${Date.now()}`, name: 'NEW PROTOCOL', description: '', exercises: [] }; setRoutines([...routines, newRoutine]); setSelectedRoutine(newRoutine); setView('ROUTINE_DETAIL'); }}
               onForkRoutine={(r) => { const newRoutine = { ...r, id: `fork_${Date.now()}`, name: `${r.name} (COPY)`, isFavorite: false }; setRoutines([...routines, newRoutine]); setSelectedRoutine(newRoutine); setView('ROUTINE_DETAIL'); }}
+              onAiGenerate={() => setAiModalOpen(true)}
             />
           )}
 
@@ -1382,6 +1536,12 @@ const App: React.FC = () => {
           onClose={() => setSelectedExerciseForDetail(null)}
           onAddToRoutine={view === 'EXPLORE' ? (pickerContext ? handleAddExercise : handleAddExerciseToActiveMission) : undefined}
           actionLabel={pickerContext === 'ROUTINE' ? "Add to Protocol" : "Add to Active Mission"}
+        />
+
+        <AiMissionModal 
+           isOpen={aiModalOpen}
+           onClose={() => setAiModalOpen(false)}
+           onGenerate={handleAiGenerate}
         />
 
         {view !== 'WORKOUT' && (
