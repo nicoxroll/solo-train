@@ -528,8 +528,12 @@ const RoutineDetailView: React.FC<{
     useEffect(() => {
         setEditedRoutine(routine);
         setIsEditing(isNew || false);
-        // Initially expand all exercises
-        setExpandedExIds(routine.exercises.map(ex => ex.id));
+        // Initially expand first exercise only
+        if (routine.exercises.length > 0) {
+            setExpandedExIds([routine.exercises[0].id]);
+        } else {
+            setExpandedExIds([]);
+        }
     }, [routine, isNew]);
 
     const handleSave = () => {
@@ -706,10 +710,10 @@ const WorkoutView: React.FC<{
     const [isPaused, setIsPaused] = useState(false);
     const [expandedExIds, setExpandedExIds] = useState<string[]>([]);
     
-    // Initialize expanded IDs to match session (expand all by default initially)
+    // Initialize expanded IDs to match session (expand first only by default initially)
     useEffect(() => {
-        if (expandedExIds.length === 0) {
-             setExpandedExIds(session.exercises.map(ex => ex.id));
+        if (expandedExIds.length === 0 && session.exercises.length > 0) {
+             setExpandedExIds([session.exercises[0].id]);
         }
     }, []); // Run once
 

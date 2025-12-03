@@ -12,7 +12,7 @@ export const Button: React.FC<ButtonProps> = ({ variant = 'primary', className =
   const baseStyles = "relative font-mono uppercase text-xs tracking-[0.15em] py-3 px-6 transition-all duration-300 border backdrop-blur-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center";
   
   const variants = {
-    primary: "bg-primary/10 border-primary text-primary hover:bg-primary hover:text-black shadow-[0_0_15px_rgba(0,255,255,0.2)]",
+    primary: "bg-primary/10 border-primary text-primary hover:bg-primary hover:text-black shadow-[0_0_15px_var(--color-primary)]",
     secondary: "bg-transparent border-white/20 text-white hover:border-white hover:bg-white/5",
     danger: "bg-red-500/10 border-red-500 text-red-500 hover:bg-red-500 hover:text-white",
     ghost: "border-transparent text-gray-400 hover:text-white",
@@ -95,7 +95,7 @@ export const StatusBadge: React.FC<{ status: 'COMPLETED' | 'INCOMPLETE' | 'ABORT
 export const ProgressBar: React.FC<{ progress: number; className?: string }> = ({ progress, className = '' }) => (
   <div className={`w-full h-1 bg-gray-800 relative overflow-hidden ${className}`}>
     <div 
-      className="h-full bg-primary shadow-[0_0_10px_#00ffff] transition-all duration-500 ease-out" 
+      className="h-full bg-primary shadow-[0_0_10px_var(--color-primary)] transition-all duration-500 ease-out" 
       style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
     />
   </div>
@@ -161,7 +161,7 @@ export const SimpleChart: React.FC<{ data: number[]; labels: string[]; color?: s
           stroke={color}
           strokeWidth="2"
           points={points}
-          className="drop-shadow-[0_0_4px_rgba(0,255,255,0.5)]"
+          style={{ filter: `drop-shadow(0 0 4px ${color}80)` }}
         />
         
         {/* Points */}
@@ -256,7 +256,7 @@ export const RadarChart: React.FC<{
           fillOpacity="0.2" 
           stroke={color} 
           strokeWidth="2" 
-          className="drop-shadow-[0_0_8px_rgba(0,255,255,0.4)]"
+          style={{ filter: `drop-shadow(0 0 8px ${color}66)` }}
         />
 
         {/* Labels */}
@@ -290,7 +290,7 @@ export const CalendarGrid: React.FC<{ days: { day: string; active: boolean }[] }
   <div className="grid grid-cols-7 gap-2">
     {days.map((d, i) => (
       <div key={i} className="flex flex-col items-center gap-1">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs border ${d.active ? 'bg-primary text-black border-primary font-bold shadow-[0_0_10px_rgba(0,255,255,0.4)]' : 'border-white/10 text-gray-500'}`}>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs border ${d.active ? 'bg-primary text-black border-primary font-bold shadow-[0_0_10px_var(--color-primary)]' : 'border-white/10 text-gray-500'}`}>
           {d.day}
         </div>
         {d.active && <div className="w-1 h-1 bg-primary rounded-full"></div>}
@@ -323,7 +323,7 @@ export const FilterGroup: React.FC<{
             className={`
               relative px-4 py-1.5 text-[10px] uppercase tracking-wider font-mono border transition-all duration-300
               ${isActive 
-                ? 'bg-primary/20 border-primary text-primary shadow-[0_0_8px_rgba(0,255,255,0.2)]' 
+                ? 'bg-primary/20 border-primary text-primary shadow-[0_0_8px_var(--color-primary)]' 
                 : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/30 hover:text-gray-300'
               }
               clip-path-angled
@@ -465,7 +465,7 @@ export const FilterModal: React.FC<{
                           className={`
                             px-4 py-2 text-xs uppercase tracking-wide font-mono border transition-all duration-300
                             ${isActive 
-                              ? 'bg-primary text-black border-primary shadow-[0_0_15px_rgba(0,255,255,0.4)]' 
+                              ? 'bg-primary text-black border-primary shadow-[0_0_15px_var(--color-primary)]' 
                               : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30 hover:text-white'
                             }
                           `}
