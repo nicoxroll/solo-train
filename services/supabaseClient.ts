@@ -2,34 +2,33 @@
 import { createClient } from '@supabase/supabase-js';
 import { UserProfile, Routine, WorkoutLog } from '../types';
 
-// REPLACE THESE WITH YOUR ACTUAL SUPABASE CREDENTIALS
-const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+// UPDATED CREDENTIALS
+const SUPABASE_URL: string = 'https://esjttrxkelnbyphtaawc.supabase.co';
+const SUPABASE_ANON_KEY: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzanR0cnhrZWxuYnlwaHRhYXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NDUyOTQsImV4cCI6MjA3OTIyMTI5NH0.FktSbHRbxHSTZj-V8qUaSzHuZpNZfHBipJYTfDExDWI';
 
 export const isSupabaseConfigured = () => {
-  return SUPABASE_URL !== 'https://YOUR_PROJECT_ID.supabase.co' && 
-         SUPABASE_ANON_KEY !== 'YOUR_ANON_KEY' &&
-         SUPABASE_URL !== '' && 
-         SUPABASE_ANON_KEY !== '';
+  return SUPABASE_URL !== '' && SUPABASE_ANON_KEY !== '';
 };
 
-// Conditional export - if not configured, client operations will fail gracefully or we handle it in App.tsx
-export const supabase = isSupabaseConfigured() 
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
-  : createClient('https://placeholder.supabase.co', 'placeholder'); // Dummy client to prevent crash on import
+// Create client
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /**
  * AUTHENTICATION
  */
 export const signInWithGoogle = async () => {
   if (!isSupabaseConfigured()) {
-    console.warn("Supabase not configured. Using simulated login.");
+    console.warn("Supabase not configured properly.");
     return;
   }
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: window.location.origin,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
     },
   });
   if (error) throw error;
@@ -52,8 +51,11 @@ export const fetchUserProfile = async (userId: string): Promise<UserProfile | nu
     .eq('id', userId)
     .single();
 
-  if (error && error.code !== 'PGRST116') {
-    console.error('Error fetching profile:', error);
+  if (error) {
+    // If error is code PGRST116 (JSON object empty/row not found), return null so app triggers setup
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching profile:', error);
+    }
     return null;
   }
   return data ? data.data : null;
@@ -61,6 +63,8 @@ export const fetchUserProfile = async (userId: string): Promise<UserProfile | nu
 
 export const upsertUserProfile = async (userId: string, profile: UserProfile) => {
   if (!isSupabaseConfigured()) return;
+  
+  // Create a record that matches the table schema (id, data)
   const { error } = await supabase
     .from('profiles')
     .upsert({ id: userId, data: profile });
@@ -84,6 +88,7 @@ export const fetchRoutines = async (userId: string): Promise<Routine[]> => {
 
 export const saveRoutine = async (userId: string, routine: Routine) => {
   if (!isSupabaseConfigured()) return;
+  
   const { error } = await supabase
     .from('routines')
     .upsert({ id: routine.id, user_id: userId, data: routine });
@@ -107,7 +112,7 @@ export const fetchLogs = async (userId: string): Promise<WorkoutLog[]> => {
     .from('logs')
     .select('data')
     .eq('user_id', userId)
-    .order('data->>date', { ascending: false });
+    .order('created_at', { ascending: false }); // Using created_at for sorting at DB level is safer
 
   if (error) {
     console.error('Error fetching logs:', error);

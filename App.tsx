@@ -57,25 +57,25 @@ const LoginView: React.FC<{
   onChangeColor: (color: string) => void;
   loading?: boolean;
 }> = ({ onLogin, currentColor, onChangeColor, loading }) => (
-  <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden bg-black">
-    <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,black_40%,transparent_100%)] pointer-events-none" style={{ filter: `hue-rotate(0deg)` }}></div>
+  <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    {/* Background grid is handled by parent App component to ensure continuity */}
     
     {/* Glitch effect container */}
     <div className="z-10 w-full max-w-md space-y-16 text-center">
       <div className="space-y-4 relative">
-        <h1 className="text-7xl md:text-8xl font-mono font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-600 drop-shadow-[0_0_25px_var(--color-primary)] select-none">
-          SOLO<span className="text-primary drop-shadow-[0_0_10px_var(--color-primary)]">TRAIN</span>
+        <h1 className="text-7xl md:text-8xl font-mono font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-600 select-none">
+          SOLO<span className="text-primary">TRAIN</span>
         </h1>
         <div className="h-px w-24 bg-primary mx-auto shadow-[0_0_10px_var(--color-primary)]"></div>
         <p className="text-primary/60 font-mono text-xs tracking-[0.5em] uppercase animate-pulse">Tactical Performance Interface</p>
       </div>
 
       <div className="glass-panel p-10 space-y-8 relative border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
-        {/* Corner Accents */}
-        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-primary"></div>
-        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-primary"></div>
-        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-primary"></div>
-        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-primary"></div>
+        {/* Corner Accents - Fixed alignment using negative margins to sit on top of border */}
+        <div className="absolute -top-[1px] -left-[1px] w-4 h-4 border-t-2 border-l-2 border-primary"></div>
+        <div className="absolute -top-[1px] -right-[1px] w-4 h-4 border-t-2 border-r-2 border-primary"></div>
+        <div className="absolute -bottom-[1px] -left-[1px] w-4 h-4 border-b-2 border-l-2 border-primary"></div>
+        <div className="absolute -bottom-[1px] -right-[1px] w-4 h-4 border-b-2 border-r-2 border-primary"></div>
 
         <div className="space-y-2">
             <h2 className="text-white font-mono uppercase text-sm tracking-widest">Authentication Required</h2>
@@ -154,7 +154,7 @@ const OnboardingView: React.FC<{ onComplete: (data: SetupData) => void }> = ({ o
 
   if (isGenerating) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-8 bg-black">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-8 bg-transparent">
          <div className="relative">
             <div className="w-24 h-24 rounded-full border-t-2 border-l-2 border-primary animate-spin"></div>
             <div className="absolute inset-2 rounded-full border-b-2 border-r-2 border-primary/30 animate-spin-slow"></div>
@@ -173,7 +173,7 @@ const OnboardingView: React.FC<{ onComplete: (data: SetupData) => void }> = ({ o
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-center p-6 max-w-md mx-auto bg-black font-mono">
+    <div className="min-h-screen flex flex-col justify-center p-6 max-w-md mx-auto font-mono">
       <div className="mb-12">
          <div className="flex justify-between items-center mb-4">
              <span className="text-primary text-xs font-mono uppercase tracking-widest">System Config // 00{step}</span>
@@ -528,7 +528,7 @@ const RoutineDetailView: React.FC<{
     useEffect(() => {
         setEditedRoutine(routine);
         setIsEditing(isNew || false);
-        // Initially expand first exercise only
+        // Initially expand only the first exercise
         if (routine.exercises.length > 0) {
             setExpandedExIds([routine.exercises[0].id]);
         } else {
@@ -710,7 +710,7 @@ const WorkoutView: React.FC<{
     const [isPaused, setIsPaused] = useState(false);
     const [expandedExIds, setExpandedExIds] = useState<string[]>([]);
     
-    // Initialize expanded IDs to match session (expand first only by default initially)
+    // Initialize expanded IDs to match session (expand only the first by default)
     useEffect(() => {
         if (expandedExIds.length === 0 && session.exercises.length > 0) {
              setExpandedExIds([session.exercises[0].id]);
