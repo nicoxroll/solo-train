@@ -33,7 +33,7 @@ const safeName = (item: string | { name: string } | undefined): string => {
 // --- AI GENERATION SERVICE ---
 export const generateAiRoutine = async (userPrompt: string): Promise<Partial<Routine> | null> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.EXPO_PUBLIC_API_KEY });
     
     // Validate prompt
     if (!userPrompt || userPrompt.trim().length === 0) return null;

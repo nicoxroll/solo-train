@@ -1,17 +1,26 @@
 
 import { createClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
 import { UserProfile, Routine, WorkoutLog } from '../types';
 
 // UPDATED CREDENTIALS
-const SUPABASE_URL: string = 'https://esjttrxkelnbyphtaawc.supabase.co';
-const SUPABASE_ANON_KEY: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzanR0cnhrZWxuYnlwaHRhYXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NDUyOTQsImV4cCI6MjA3OTIyMTI5NH0.FktSbHRbxHSTZj-V8qUaSzHuZpNZfHBipJYTfDExDWI';
+const SUPABASE_URL: string = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://esjttrxkelnbyphtaawc.supabase.co';
+const SUPABASE_ANON_KEY: string = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzanR0cnhrZWxuYnlwaHRhYXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NDUyOTQsImV4cCI6MjA3OTIyMTI5NH0.FktSbHRbxHSTZj-V8qUaSzHuZpNZfHBipJYTfDExDWI';
 
 export const isSupabaseConfigured = () => {
   return SUPABASE_URL !== '' && SUPABASE_ANON_KEY !== '';
 };
 
-// Create client
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Create client with AsyncStorage for React Native persistence
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
 
 /**
  * AUTHENTICATION
@@ -21,17 +30,27 @@ export const signInWithGoogle = async () => {
     console.warn("Supabase not configured properly.");
     return;
   }
-  const { error } = await supabase.auth.signInWithOAuth({
+  
+  // For Expo Go, use the expo redirect scheme
+  const redirectUrl = Linking.createURL('/auth/callback'); 
+  
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin,
+      redirectTo: redirectUrl,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
       },
     },
   });
+  
   if (error) throw error;
+  
+  // In React Native, signInWithOAuth usually returns a URL to open in a browser
+  if (data?.url) {
+     await Linking.openURL(data.url);
+  }
 };
 
 export const signOut = async () => {

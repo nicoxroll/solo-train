@@ -1,76 +1,108 @@
 
 import React, { ReactNode, useState } from 'react';
-import { Search, X, Check, AlertTriangle, Ban, ChevronLeft, Calendar, Clock, BarChart3, Layers } from 'lucide-react';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Modal, Pressable, ActivityIndicator } from 'react-native';
+import { Search, X, Check, AlertTriangle, Ban, ChevronLeft, Calendar, Clock, BarChart3, Layers } from 'lucide-react-native';
+import Svg, { Polygon, Line, Text as SvgText, Circle, Path, G, Defs, LinearGradient, Stop, Polyline } from 'react-native-svg';
 import { WorkoutLog, RoutineExercise } from '../types';
+// import { styled } from 'nativewind';
+const styled = (Component: any) => Component;
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+const StyledView = styled(View);
+const StyledText = styled(Text);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+const StyledTextInput = styled(TextInput);
+const StyledPressable = styled(Pressable);
+const StyledScrollView = styled(ScrollView);
+
+interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'glass';
   children: ReactNode;
+  className?: string;
+  onPress?: () => void;
+  disabled?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({ variant = 'primary', className = '', children, ...props }) => {
-  const baseStyles = "relative font-mono uppercase text-xs tracking-[0.15em] py-3 px-6 transition-all duration-300 border backdrop-blur-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center";
+export const Button: React.FC<ButtonProps> = ({ variant = 'primary', className = '', children, onPress, disabled, ...props }) => {
+  const baseStyles = "relative py-3 px-6 border flex-row items-center justify-center";
   
   const variants = {
-    primary: "bg-primary/10 border-primary text-primary hover:bg-primary hover:text-black shadow-[0_0_15px_var(--color-primary)]",
-    secondary: "bg-transparent border-white/20 text-white hover:border-white hover:bg-white/5",
-    danger: "bg-red-500/10 border-red-500 text-red-500 hover:bg-red-500 hover:text-white",
-    ghost: "border-transparent text-gray-400 hover:text-white",
-    glass: "bg-white/5 border-white/10 text-white hover:bg-white/10 backdrop-blur-md"
+    primary: "bg-primary/10 border-primary shadow-sm",
+    secondary: "bg-transparent border-white/20",
+    danger: "bg-red-500/10 border-red-500",
+    ghost: "border-transparent",
+    glass: "bg-white/5 border-white/10"
+  };
+
+  const textVariants = {
+    primary: "text-primary",
+    secondary: "text-white",
+    danger: "text-red-500",
+    ghost: "text-gray-400",
+    glass: "text-white"
   };
 
   return (
-    <button className={`${baseStyles} ${variants[variant]} ${className}`} {...props}>
-      {children}
+    <StyledTouchableOpacity 
+      onPress={onPress}
+      disabled={disabled}
+      className={`${baseStyles} ${variants[variant]} ${disabled ? 'opacity-50' : ''} ${className}`} 
+      {...props}
+    >
+      <StyledText className={`font-mono uppercase text-xs tracking-widest ${textVariants[variant]}`}>
+        {children}
+      </StyledText>
       {/* Decorative corner markers for tactical look */}
       {variant === 'primary' && (
         <>
-          <span className="absolute top-0 left-0 w-1 h-1 bg-primary"></span>
-          <span className="absolute bottom-0 right-0 w-1 h-1 bg-primary"></span>
+          <StyledView className="absolute top-0 left-0 w-1 h-1 bg-primary" />
+          <StyledView className="absolute bottom-0 right-0 w-1 h-1 bg-primary" />
         </>
       )}
-    </button>
+    </StyledTouchableOpacity>
   );
 };
 
 export const Card: React.FC<{ children: ReactNode; className?: string; onClick?: () => void }> = ({ children, className = '', onClick }) => (
-  <div onClick={onClick} className={`glass-panel p-6 border-l-2 border-l-transparent hover:border-l-primary transition-colors duration-300 ${className}`}>
+  <StyledPressable onPress={onClick} className={`p-6 border-l-2 border-l-transparent active:border-l-primary bg-white/5 ${className}`}>
     {children}
-  </div>
+  </StyledPressable>
 );
 
-export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
-  <input
+export const Input: React.FC<any> = (props) => (
+  <StyledTextInput
     {...props}
-    className={`w-full bg-surfaceHighlight border-b border-white/20 px-4 py-3 text-sm font-light text-white focus:outline-none focus:border-primary focus:bg-white/5 transition-all placeholder-gray-600 ${props.className}`}
+    placeholderTextColor="#666"
+    className={`w-full bg-surfaceHighlight border-b border-white/20 px-4 py-3 text-sm font-light text-white ${props.className}`}
   />
 );
 
-export const Select: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = (props) => (
-  <div className="relative">
-    <select
-      {...props}
-      className={`w-full appearance-none bg-surfaceHighlight border-b border-white/20 px-4 py-3 text-sm font-light text-white focus:outline-none focus:border-primary focus:bg-white/5 transition-all placeholder-gray-600 ${props.className}`}
-    >
-      {props.children}
-    </select>
-    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-    </div>
-  </div>
+export const Select: React.FC<any> = (props) => (
+  <StyledView className="relative">
+    {/* React Native doesn't have a direct Select equivalent, using View for now. 
+        Ideally use a Picker or Modal based selector */}
+    <StyledText className="text-white">Select Component Placeholder</StyledText>
+  </StyledView>
 );
 
 export const Badge: React.FC<{ children: ReactNode; variant?: 'default' | 'primary' | 'outline' }> = ({ children, variant = 'default' }) => {
   const styles = {
-    default: 'border-white/10 text-gray-300 bg-white/5',
-    primary: 'border-primary/50 text-primary bg-primary/10',
-    outline: 'border-white/20 text-gray-400 bg-transparent'
+    default: 'border-white/10 bg-white/5',
+    primary: 'border-primary/50 bg-primary/10',
+    outline: 'border-white/20 bg-transparent'
+  };
+
+  const textStyles = {
+    default: 'text-gray-300',
+    primary: 'text-primary',
+    outline: 'text-gray-400'
   };
   
   return (
-    <span className={`inline-block px-2 py-0.5 border text-[10px] uppercase tracking-wider ${styles[variant]}`}>
-      {children}
-    </span>
+    <StyledView className={`px-2 py-0.5 border ${styles[variant]}`}>
+      <StyledText className={`text-[10px] uppercase tracking-wider ${textStyles[variant]}`}>
+        {children}
+      </StyledText>
+    </StyledView>
   );
 };
 
@@ -85,20 +117,20 @@ export const StatusBadge: React.FC<{ status: 'COMPLETED' | 'INCOMPLETE' | 'ABORT
   const Icon = config.icon;
 
   return (
-    <div className={`flex items-center gap-2 px-2 py-1 rounded border ${config.border} ${config.bg} ${config.color}`}>
-      <Icon className="w-3 h-3" />
-      <span className="text-[9px] uppercase font-bold tracking-wider">{status}</span>
-    </div>
+    <StyledView className={`flex-row items-center gap-2 px-2 py-1 rounded border ${config.border} ${config.bg}`}>
+      <Icon size={12} color={status === 'COMPLETED' ? '#00ffff' : status === 'INCOMPLETE' ? '#eab308' : '#ef4444'} />
+      <StyledText className={`text-[9px] uppercase font-bold tracking-wider ${config.color}`}>{status}</StyledText>
+    </StyledView>
   );
 };
 
 export const ProgressBar: React.FC<{ progress: number; className?: string }> = ({ progress, className = '' }) => (
-  <div className={`w-full h-1 bg-gray-800 relative overflow-hidden ${className}`}>
-    <div 
-      className="h-full bg-primary shadow-[0_0_10px_var(--color-primary)] transition-all duration-500 ease-out" 
+  <StyledView className={`w-full h-1 bg-gray-800 relative overflow-hidden ${className}`}>
+    <StyledView 
+      className="h-full bg-primary" 
       style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
     />
-  </div>
+  </StyledView>
 );
 
 // Standardized Header Component
@@ -109,20 +141,23 @@ export const ScreenHeader: React.FC<{
   onBack?: () => void;
   className?: string;
 }> = ({ title, subtitle, rightAction, onBack, className = '' }) => (
-  <header className={`flex items-end justify-between border-b border-white/10 pb-4 mb-6 ${className}`}>
-    <div className="flex items-center gap-4">
+  <StyledView className={`flex-row items-end justify-between border-b border-white/10 pb-4 mb-6 px-6 pt-4 bg-black/40 ${className}`}>
+    <StyledView className="flex-row items-center gap-4">
       {onBack && (
-        <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors p-1 -ml-1">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
+        <StyledTouchableOpacity onPress={onBack} className="p-2 -ml-2 bg-white/5 border border-white/10 rounded-sm mr-2">
+          <ChevronLeft className="w-5 h-5 text-primary" />
+        </StyledTouchableOpacity>
       )}
-      <div>
-        <h2 className="text-3xl font-light text-white uppercase tracking-tight leading-none">{title}</h2>
-        {subtitle && <p className="text-[10px] text-primary uppercase tracking-[0.2em] font-mono mt-1">{subtitle}</p>}
-      </div>
-    </div>
-    {rightAction && <div className="mb-1">{rightAction}</div>}
-  </header>
+      <StyledView>
+        <StyledView className="flex-row items-center gap-2">
+           <StyledView className="w-1 h-4 bg-primary" />
+           <StyledText className="text-2xl font-black text-white uppercase tracking-tighter leading-none font-mono">{title}</StyledText>
+        </StyledView>
+        {subtitle && <StyledText className="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-mono mt-1 ml-3">{subtitle}</StyledText>}
+      </StyledView>
+    </StyledView>
+    {rightAction && <StyledView className="mb-1">{rightAction}</StyledView>}
+  </StyledView>
 );
 
 // Simple SVG Line Chart
@@ -139,29 +174,28 @@ export const SimpleChart: React.FC<{ data: number[]; labels: string[]; color?: s
   }).join(' ');
 
   return (
-    <div className="w-full overflow-hidden relative">
-      <svg viewBox={`0 0 ${width} ${height + 20}`} className="w-full h-auto overflow-visible">
+    <StyledView className="w-full overflow-hidden relative">
+      <Svg viewBox={`0 0 ${width} ${height + 20}`} width="100%" height={height + 20}>
         {/* Grid lines */}
-        <line x1="0" y1="0" x2={width} y2="0" stroke="#333" strokeDasharray="4" strokeOpacity="0.5" />
-        <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="#333" strokeDasharray="4" strokeOpacity="0.5" />
-        <line x1="0" y1={height} x2={width} y2={height} stroke="#333" strokeDasharray="4" strokeOpacity="0.5" />
+        <Line x1="0" y1="0" x2={width} y2="0" stroke="#333" strokeDasharray="4" strokeOpacity="0.5" />
+        <Line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="#333" strokeDasharray="4" strokeOpacity="0.5" />
+        <Line x1="0" y1={height} x2={width} y2={height} stroke="#333" strokeDasharray="4" strokeOpacity="0.5" />
         
         {/* Fill Area Gradient */}
-        <defs>
-          <linearGradient id={`grad-${color}`} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity="0.2" />
-            <stop offset="100%" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <polygon points={`0,${height} ${points} ${width},${height}`} fill={`url(#grad-${color})`} />
+        <Defs>
+          <LinearGradient id={`grad-${color}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor={color} stopOpacity="0.2" />
+            <Stop offset="100%" stopColor={color} stopOpacity="0" />
+          </LinearGradient>
+        </Defs>
+        <Polygon points={`0,${height} ${points} ${width},${height}`} fill={`url(#grad-${color})`} />
 
         {/* The Line */}
-        <polyline
+        <Polyline
           fill="none"
           stroke={color}
           strokeWidth="2"
           points={points}
-          style={{ filter: `drop-shadow(0 0 4px ${color}80)` }}
         />
         
         {/* Points */}
@@ -169,7 +203,7 @@ export const SimpleChart: React.FC<{ data: number[]; labels: string[]; color?: s
            const x = (i / (data.length - 1)) * width;
            const y = height - ((val - min) / (max - min)) * height;
            return (
-             <circle key={i} cx={x} cy={y} r="3" fill="#000" stroke={color} strokeWidth="2" />
+             <Circle key={i} cx={x} cy={y} r="3" fill="#000" stroke={color} strokeWidth="2" />
            );
         })}
 
@@ -177,11 +211,11 @@ export const SimpleChart: React.FC<{ data: number[]; labels: string[]; color?: s
         {labels.map((lbl, i) => {
            const x = (i / (labels.length - 1)) * width;
            return (
-             <text key={i} x={x} y={height + 15} fontSize="8" fill="#666" textAnchor="middle" fontFamily="monospace">{lbl}</text>
+             <SvgText key={i} x={x} y={height + 15} fontSize="8" fill="#666" textAnchor="middle" fontFamily="monospace">{lbl}</SvgText>
            )
         })}
-      </svg>
-    </div>
+      </Svg>
+    </StyledView>
   );
 };
 
@@ -213,8 +247,8 @@ export const RadarChart: React.FC<{
   const gridLevels = [0.25, 0.5, 0.75, 1];
 
   return (
-    <div className="flex justify-center items-center py-4">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <StyledView className="items-center justify-center py-4">
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         {/* Background Grid */}
         {gridLevels.map((level, i) => {
           const points = data.map((d, j) => {
@@ -222,7 +256,7 @@ export const RadarChart: React.FC<{
             return `${coords.x},${coords.y}`;
           }).join(' ');
           return (
-            <polygon 
+            <Polygon 
               key={i} 
               points={points} 
               fill="none" 
@@ -237,7 +271,7 @@ export const RadarChart: React.FC<{
         {data.map((d, i) => {
           const coords = getCoordinates(d.fullMark, i, d.fullMark);
           return (
-            <line 
+            <Line 
               key={i} 
               x1={center} 
               y1={center} 
@@ -250,13 +284,12 @@ export const RadarChart: React.FC<{
         })}
 
         {/* Data Area */}
-        <polygon 
+        <Polygon 
           points={polyPoints} 
           fill={color} 
           fillOpacity="0.2" 
           stroke={color} 
           strokeWidth="2" 
-          style={{ filter: `drop-shadow(0 0 8px ${color}66)` }}
         />
 
         {/* Labels */}
@@ -266,37 +299,36 @@ export const RadarChart: React.FC<{
           const x = center + Math.cos(angle) * labelRadius;
           const y = center + Math.sin(angle) * labelRadius;
           return (
-            <text 
+            <SvgText 
               key={i} 
               x={x} 
               y={y} 
               textAnchor="middle" 
-              dominantBaseline="middle" 
+              alignmentBaseline="middle" 
               fill="#888" 
               fontSize="10" 
               fontFamily="monospace"
-              className="uppercase"
             >
               {d.label}
-            </text>
+            </SvgText>
           );
         })}
-      </svg>
-    </div>
+      </Svg>
+    </StyledView>
   );
 };
 
 export const CalendarGrid: React.FC<{ days: { day: string; active: boolean }[] }> = ({ days }) => (
-  <div className="grid grid-cols-7 gap-2">
+  <StyledView className="flex-row flex-wrap gap-2 justify-between">
     {days.map((d, i) => (
-      <div key={i} className="flex flex-col items-center gap-1">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs border ${d.active ? 'bg-primary text-black border-primary font-bold shadow-[0_0_10px_var(--color-primary)]' : 'border-white/10 text-gray-500'}`}>
-          {d.day}
-        </div>
-        {d.active && <div className="w-1 h-1 bg-primary rounded-full"></div>}
-      </div>
+      <StyledView key={i} className="items-center gap-1">
+        <StyledView className={`w-8 h-8 rounded-full items-center justify-center border ${d.active ? 'bg-primary border-primary' : 'border-white/10'}`}>
+          <StyledText className={`text-xs ${d.active ? 'text-black font-bold' : 'text-gray-500'}`}>{d.day}</StyledText>
+        </StyledView>
+        {d.active && <StyledView className="w-1 h-1 bg-primary rounded-full" />}
+      </StyledView>
     ))}
-  </div>
+  </StyledView>
 );
 
 export const FilterGroup: React.FC<{ 
@@ -313,28 +345,28 @@ export const FilterGroup: React.FC<{
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <StyledView className="flex-row flex-wrap gap-2">
       {options.map(opt => {
         const isActive = selected.includes(opt);
         return (
-          <button
+          <StyledTouchableOpacity
             key={opt}
-            onClick={() => toggle(opt)}
+            onPress={() => toggle(opt)}
             className={`
-              relative px-4 py-1.5 text-[10px] uppercase tracking-wider font-mono border transition-all duration-300
+              px-4 py-1.5 border
               ${isActive 
-                ? 'bg-primary/20 border-primary text-primary shadow-[0_0_8px_var(--color-primary)]' 
-                : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/30 hover:text-gray-300'
+                ? 'bg-primary/20 border-primary' 
+                : 'bg-white/5 border-white/10'
               }
-              clip-path-angled
             `}
-            style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
           >
-            {opt}
-          </button>
+            <StyledText className={`text-[10px] uppercase tracking-wider font-mono ${isActive ? 'text-primary' : 'text-gray-500'}`}>
+              {opt}
+            </StyledText>
+          </StyledTouchableOpacity>
         )
       })}
-    </div>
+    </StyledView>
   );
 };
 
@@ -362,42 +394,41 @@ const MuscleMap: React.FC<{
   };
 
   return (
-    <div className="w-full flex justify-center py-4 bg-black/20 rounded border border-white/5 mb-4">
-       <svg viewBox="0 0 250 200" className="w-64 h-48 drop-shadow-lg">
+    <StyledView className="w-full items-center justify-center py-4 bg-black/20 rounded border border-white/5 mb-4">
+       <Svg viewBox="0 0 250 200" width={250} height={200}>
           {/* Front Body Silhouette Outline */}
-          <path d="M 100 20 A 15 15 0 0 1 100 50 A 5 5 0 0 0 100 55 L 130 55 L 145 100 L 120 190 L 80 190 L 55 100 L 70 55 L 100 55" 
+          <Path d="M 100 20 A 15 15 0 0 1 100 50 A 5 5 0 0 0 100 55 L 130 55 L 145 100 L 120 190 L 80 190 L 55 100 L 70 55 L 100 55" 
                 fill="none" stroke="#333" strokeWidth="1" strokeDasharray="4 2" />
 
           {/* Render Groups */}
           {muscleGroups.map(group => {
              const active = isSelected(group.aliases);
              return (
-               <g key={group.id} onClick={() => handleZoneClick(group)} className="cursor-pointer group">
-                  <path 
+               <G key={group.id} onPress={() => handleZoneClick(group)}>
+                  <Path 
                     d={group.path} 
                     fill={active ? '#00ffff' : 'rgba(255,255,255,0.05)'} 
                     stroke={active ? '#00ffff' : 'rgba(255,255,255,0.3)'}
                     strokeWidth="1"
-                    className="transition-all duration-300 hover:fill-primary/40"
                   />
                   {/* Label on Hover or Active */}
                   {(active) && !group.isBackView && (
-                     <text x="30" y="30" fill="#00ffff" fontSize="8" fontFamily="monospace" className="uppercase animate-pulse">
+                     <SvgText x="30" y="30" fill="#00ffff" fontSize="8" fontFamily="monospace" className="uppercase">
                         Target: {group.label}
-                     </text>
+                     </SvgText>
                   )}
                   {group.isBackView && (
-                      <text x="200" y="45" fill="#666" fontSize="8" fontFamily="monospace" textAnchor="middle">POSTERIOR</text>
+                      <SvgText x="200" y="45" fill="#666" fontSize="8" fontFamily="monospace" textAnchor="middle">POSTERIOR</SvgText>
                   )}
-               </g>
+               </G>
              )
           })}
           
           {/* Decorative Head */}
-          <circle cx="100" cy="35" r="12" fill="none" stroke="#444" strokeWidth="1" />
-          <circle cx="200" cy="35" r="12" fill="none" stroke="#444" strokeWidth="1" />
-       </svg>
-    </div>
+          <Circle cx="100" cy="35" r="12" fill="none" stroke="#444" strokeWidth="1" />
+          <Circle cx="200" cy="35" r="12" fill="none" stroke="#444" strokeWidth="1" />
+       </Svg>
+    </StyledView>
   );
 };
 
@@ -410,84 +441,86 @@ export const FilterModal: React.FC<{
 }> = ({ isOpen, onClose, sections, selectedFilters, onToggleFilter }) => {
   const [filterSearch, setFilterSearch] = useState('');
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-xl animate-fade-in">
-       {/* Header */}
-       <div className="flex items-center justify-between p-6 border-b border-white/10">
-         <div>
-           <h2 className="text-xl font-light text-white tracking-widest">FILTER // CONFIG</h2>
-           <p className="text-[10px] text-primary uppercase">Select Parameters</p>
-         </div>
-         <button onClick={onClose} className="p-2 border border-white/10 hover:border-white/50 text-white rounded-full transition-colors">
-            <X className="w-5 h-5" />
-         </button>
-       </div>
+    <Modal visible={isOpen} animationType="slide" transparent={true} onRequestClose={onClose}>
+      <StyledView className="flex-1 bg-black/95">
+         {/* Header */}
+         <StyledView className="flex-row items-center justify-between p-6 border-b border-white/10 mt-10">
+           <StyledView>
+             <StyledText className="text-xl text-white tracking-widest font-light">FILTER // CONFIG</StyledText>
+             <StyledText className="text-[10px] text-primary uppercase">Select Parameters</StyledText>
+           </StyledView>
+           <StyledTouchableOpacity onPress={onClose} className="p-2 border border-white/10 rounded-full">
+              <X className="w-5 h-5 text-white" />
+           </StyledTouchableOpacity>
+         </StyledView>
 
-       {/* Search in filters */}
-       <div className="p-6 pb-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-3.5 w-4 h-4 text-gray-500" />
-            <Input 
-              placeholder="Search parameters..." 
-              className="pl-10 !bg-white/5 border-transparent focus:border-primary"
-              value={filterSearch}
-              onChange={(e) => setFilterSearch(e.target.value)}
-            />
-          </div>
-       </div>
+         {/* Search in filters */}
+         <StyledView className="p-6 pb-2">
+            <StyledView className="relative">
+              <Search className="absolute left-3 top-3.5 w-4 h-4 text-gray-500 z-10" />
+              <StyledTextInput 
+                placeholder="Search parameters..." 
+                placeholderTextColor="#666"
+                className="pl-10 bg-white/5 border border-transparent text-white h-10 rounded"
+                value={filterSearch}
+                onChangeText={setFilterSearch}
+              />
+            </StyledView>
+         </StyledView>
 
-       {/* Content */}
-       <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-          
-          {/* VISUAL MUSCLE FILTER */}
-          <div className="mb-8">
-             <h3 className="text-xs text-gray-500 uppercase tracking-widest mb-4 border-l-2 border-primary pl-2">Visual Targeting</h3>
-             <MuscleMap selected={selectedFilters} onToggle={onToggleFilter} />
-          </div>
+         {/* Content */}
+         <StyledScrollView className="flex-1 p-6">
+            
+            {/* VISUAL MUSCLE FILTER */}
+            <StyledView className="mb-8">
+               <StyledText className="text-xs text-gray-500 uppercase tracking-widest mb-4 border-l-2 border-primary pl-2">Visual Targeting</StyledText>
+               <MuscleMap selected={selectedFilters} onToggle={onToggleFilter} />
+            </StyledView>
 
-          {sections.map((section) => {
-             // Safe check for string to avoid toLowerCase crash
-             const filteredOptions = section.options.filter(opt => String(opt).toLowerCase().includes(filterSearch.toLowerCase()));
-             if (filteredOptions.length === 0) return null;
+            {sections.map((section) => {
+               // Safe check for string to avoid toLowerCase crash
+               const filteredOptions = section.options.filter(opt => String(opt).toLowerCase().includes(filterSearch.toLowerCase()));
+               if (filteredOptions.length === 0) return null;
 
-             return (
-               <div key={section.title}>
-                 <h3 className="text-xs text-gray-500 uppercase tracking-widest mb-4 border-l-2 border-primary pl-2">{section.title}</h3>
-                 <div className="flex flex-wrap gap-2">
-                   {filteredOptions.map(opt => {
-                     const isActive = selectedFilters.includes(opt);
-                     return (
-                       <button
-                          key={opt}
-                          onClick={() => onToggleFilter(opt)}
-                          className={`
-                            px-4 py-2 text-xs uppercase tracking-wide font-mono border transition-all duration-300
-                            ${isActive 
-                              ? 'bg-primary text-black border-primary shadow-[0_0_15px_var(--color-primary)]' 
-                              : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30 hover:text-white'
-                            }
-                          `}
-                          style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}
-                       >
-                         {opt}
-                       </button>
-                     )
-                   })}
-                 </div>
-               </div>
-             )
-          })}
-       </div>
+               return (
+                 <StyledView key={section.title} className="mb-6">
+                   <StyledText className="text-xs text-gray-500 uppercase tracking-widest mb-4 border-l-2 border-primary pl-2">{section.title}</StyledText>
+                   <StyledView className="flex-row flex-wrap gap-2">
+                     {filteredOptions.map(opt => {
+                       const isActive = selectedFilters.includes(opt);
+                       return (
+                         <StyledTouchableOpacity
+                            key={opt}
+                            onPress={() => onToggleFilter(opt)}
+                            className={`
+                              px-4 py-2 border
+                              ${isActive 
+                                ? 'bg-primary border-primary' 
+                                : 'bg-white/5 border-white/10'
+                              }
+                            `}
+                         >
+                           <StyledText className={`text-xs uppercase tracking-wide font-mono ${isActive ? 'text-black font-bold' : 'text-gray-400'}`}>
+                             {opt}
+                           </StyledText>
+                         </StyledTouchableOpacity>
+                       )
+                     })}
+                   </StyledView>
+                 </StyledView>
+               )
+            })}
+         </StyledScrollView>
 
-       {/* Footer */}
-       <div className="p-6 border-t border-white/10 bg-black/40">
-         <Button onClick={onClose} className="w-full">
-            Apply Filters ({selectedFilters.length})
-         </Button>
-       </div>
-    </div>
+         {/* Footer */}
+         <StyledView className="p-6 border-t border-white/10 bg-black/40 mb-6">
+           <Button onPress={onClose} className="w-full">
+              Apply Filters ({selectedFilters.length})
+           </Button>
+         </StyledView>
+      </StyledView>
+    </Modal>
   );
 };
 
@@ -496,67 +529,69 @@ export const LogDetailModal: React.FC<{ log: WorkoutLog | null; onClose: () => v
    if (!log) return null;
 
    return (
-     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" onClick={onClose}>
-       <div className="w-full max-w-lg bg-surface border border-white/10 relative overflow-hidden flex flex-col max-h-[80vh] shadow-[0_0_50px_rgba(0,0,0,0.8)]" onClick={e => e.stopPropagation()}>
-         
-         <div className="bg-white/5 border-b border-white/10 p-6 flex justify-between items-start">
-            <div>
-               <h2 className="text-xl font-mono text-white uppercase tracking-wide mb-1">{log.routineName}</h2>
-               <div className="flex items-center gap-2 text-[10px] text-gray-400 font-mono uppercase">
-                  <Calendar className="w-3 h-3" />
-                  <span>{new Date(log.date).toLocaleDateString()}</span>
-                  <Clock className="w-3 h-3 ml-2" />
-                  <span>{log.duration} MIN</span>
-               </div>
-            </div>
-            <button onClick={onClose} className="p-2 bg-black/50 hover:text-primary rounded-full transition-colors"><X className="w-4 h-4" /></button>
-         </div>
+     <Modal visible={!!log} animationType="fade" transparent={true} onRequestClose={onClose}>
+       <StyledView className="flex-1 bg-black/90 justify-center items-center p-4">
+         <StyledView className="w-full max-w-lg bg-black border border-white/10 flex-col max-h-[80%] shadow-lg">
+           
+           <StyledView className="bg-white/5 border-b border-white/10 p-6 flex-row justify-between items-start">
+              <StyledView>
+                 <StyledText className="text-xl font-mono text-white uppercase tracking-wide mb-1">{log.routineName}</StyledText>
+                 <StyledView className="flex-row items-center gap-2">
+                    <Calendar className="w-3 h-3 text-gray-400" />
+                    <StyledText className="text-[10px] text-gray-400 font-mono uppercase">{new Date(log.date).toLocaleDateString()}</StyledText>
+                    <Clock className="w-3 h-3 ml-2 text-gray-400" />
+                    <StyledText className="text-[10px] text-gray-400 font-mono uppercase">{log.duration} MIN</StyledText>
+                 </StyledView>
+              </StyledView>
+              <StyledTouchableOpacity onPress={onClose} className="p-2 bg-black/50 rounded-full"><X className="w-4 h-4 text-white" /></StyledTouchableOpacity>
+           </StyledView>
 
-         <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
-            <div className="grid grid-cols-3 gap-4">
-                <div className="glass-panel p-3 border border-white/10 text-center">
-                   <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">XP</div>
-                   <div className="text-xl text-primary font-mono font-bold">+{log.xpEarned}</div>
-                </div>
-                <div className="glass-panel p-3 border border-white/10 text-center">
-                   <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Volume</div>
-                   <div className="text-xl text-white font-mono font-bold">{(log.totalVolume/1000).toFixed(1)}k</div>
-                </div>
-                <div className="glass-panel p-3 border border-white/10 text-center">
-                   <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Status</div>
-                   <div className="flex justify-center"><StatusBadge status={log.status} /></div>
-                </div>
-            </div>
+           <StyledScrollView className="p-6">
+              <StyledView className="flex-row justify-between gap-4 mb-6">
+                  <StyledView className="flex-1 p-3 border border-white/10 items-center bg-white/5">
+                     <StyledText className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">XP</StyledText>
+                     <StyledText className="text-xl text-primary font-mono font-bold">+{log.xpEarned}</StyledText>
+                  </StyledView>
+                  <StyledView className="flex-1 p-3 border border-white/10 items-center bg-white/5">
+                     <StyledText className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Volume</StyledText>
+                     <StyledText className="text-xl text-white font-mono font-bold">{(log.totalVolume/1000).toFixed(1)}k</StyledText>
+                  </StyledView>
+                  <StyledView className="flex-1 p-3 border border-white/10 items-center bg-white/5">
+                     <StyledText className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Status</StyledText>
+                     <StatusBadge status={log.status} />
+                  </StyledView>
+              </StyledView>
 
-            <div className="space-y-4">
-               <h3 className="text-xs text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Mission Log</h3>
-               {log.exercises.map((ex, i) => {
-                  const completedCount = ex.setLogs.filter(s => s.completed).length;
-                  return (
-                     <div key={i} className="bg-white/5 border border-white/5 p-3 space-y-2">
-                        <div className="flex justify-between items-center">
-                           <span className="text-sm font-mono text-white uppercase font-bold">{ex.name}</span>
-                           <span className="text-[10px] font-mono text-gray-400">{completedCount}/{ex.targetSets} SETS</span>
-                        </div>
-                        <div className="space-y-1">
-                           {ex.setLogs.map((set, j) => (
-                              <div key={j} className="flex justify-between items-center text-xs font-mono px-2 py-1 bg-black/20 rounded-sm">
-                                 <span className="text-gray-500">SET {j+1}</span>
-                                 <span className="text-gray-300">{set.weight}kg x {set.reps}</span>
-                                 {set.completed ? <Check className="w-3 h-3 text-primary" /> : <span className="w-3 h-3 block bg-gray-700/50 rounded-full"></span>}
-                              </div>
-                           ))}
-                        </div>
-                     </div>
-                  )
-               })}
-            </div>
-         </div>
+              <StyledView className="mb-6">
+                 <StyledText className="text-xs text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2 mb-4">Mission Log</StyledText>
+                 {log.exercises.map((ex, i) => {
+                    const completedCount = ex.setLogs.filter(s => s.completed).length;
+                    return (
+                       <StyledView key={i} className="bg-white/5 border border-white/5 p-3 mb-2">
+                          <StyledView className="flex-row justify-between items-center mb-2">
+                             <StyledText className="text-sm font-mono text-white uppercase font-bold">{ex.name}</StyledText>
+                             <StyledText className="text-[10px] font-mono text-gray-400">{completedCount}/{ex.targetSets} SETS</StyledText>
+                          </StyledView>
+                          <StyledView>
+                             {ex.setLogs.map((set, j) => (
+                                <StyledView key={j} className="flex-row justify-between items-center px-2 py-1 bg-black/20 rounded-sm mb-1">
+                                   <StyledText className="text-xs font-mono text-gray-500">SET {j+1}</StyledText>
+                                   <StyledText className="text-xs font-mono text-gray-300">{set.weight}kg x {set.reps}</StyledText>
+                                   {set.completed ? <Check className="w-3 h-3 text-primary" /> : <StyledView className="w-3 h-3 bg-gray-700/50 rounded-full" />}
+                                </StyledView>
+                             ))}
+                          </StyledView>
+                       </StyledView>
+                    )
+                 })}
+              </StyledView>
+           </StyledScrollView>
 
-         <div className="p-4 bg-surfaceHighlight border-t border-white/10">
-            <Button onClick={onClose} className="w-full">Close Log</Button>
-         </div>
-       </div>
-     </div>
+           <StyledView className="p-4 border-t border-white/10">
+              <Button onPress={onClose} className="w-full">Close Log</Button>
+           </StyledView>
+         </StyledView>
+       </StyledView>
+     </Modal>
    );
 };
